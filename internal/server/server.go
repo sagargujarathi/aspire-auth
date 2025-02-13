@@ -32,6 +32,6 @@ func (s *APIServer) InitHandlers() {
 }
 
 func (s *APIServer) Run() {
-
+	log.Println("Server is running on port", s.portAddress)
 	log.Fatal(s.app.Listen(s.portAddress))
 }
