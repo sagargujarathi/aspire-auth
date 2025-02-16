@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Verify Your Aspire Auth Account</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        background-color: #f4f4f4;
+        font-family: "Montserrat", Arial, sans-serif;
+      }
+      .container {
+        max-width: 640px;
+        margin: 0 auto;
+        background-color: #ffffff;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      }
+      .header {
+        text-align: center;
+        padding: 40px 20px;
+        background-color: #ffffff;
+      }
+      .header img {
+        max-width: 200px;
+        height: auto;
+      }
+      .content {
+        padding: 40px;
+        text-align: center;
+      }
+      .title {
+        color: #2b303a;
+        font-size: 30px;
+        font-weight: bold;
+        margin-bottom: 20px;
+      }
+      .message {
+        color: #555555;
+        font-size: 15px;
+        line-height: 1.5;
+        margin-bottom: 30px;
+      }
+      .otp-container {
+        margin: 30px 0;
+      }
+      .otp {
+        background-color: #1aa19c;
+        color: #ffffff;
+        font-size: 24px;
+        font-weight: bold;
+        padding: 15px 30px;
+        border-radius: 60px;
+        display: inline-block;
+      }
+      .footer {
+        color: #555555;
+        font-size: 14px;
+        text-align: center;
+        padding: 20px;
+        border-top: 1px solid #eeeeee;
+      }
+      .email-link {
+        color: #0068a5;
+        text-decoration: none;
+      }
+      @media only screen and (max-width: 640px) {
+        .container {
+          width: 100%;
+        }
+        .content {
+          padding: 20px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <!-- Optional: Add your logo here -->
+        <!-- <img src="https://your-domain.com/logo.png" alt="Aspire Auth Logo"> -->
+      </div>
+      <div class="content">
+        <h1 class="title">Verify Your Aspire Auth Account</h1>
+        <p class="message">
+          Thanks for registering an account with Aspire Auth using the email
+          address
+          <a href="mailto:{{.Email}}" class="email-link">{{.Email}}</a>. To
+          verify your email address, please use the OTP code below.
+        </p>
+        <div class="otp-container">
+          <div class="otp">{{.OTP}}</div>
+        </div>
+        <p class="message">This OTP will expire in 15 minutes.</p>
+      </div>
+      <div class="footer">
+        &copy; {{.Year}} Aspire Auth. All rights reserved.
+      </div>
+    </div>
+  </body>
+</html>
