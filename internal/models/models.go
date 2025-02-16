@@ -19,48 +19,56 @@ const (
 )
 
 type Account struct {
-	ID             uuid.UUID   `gorm:"type:uuid;default:gen_random_uuid()" json:"id"`
-	Username       string      `gorm:"type:text;not null" json:"username"`
-	Email          string      `gorm:"type:text;not null" json:"email"`
+	ID             uuid.UUID   `gorm:"type:uuid;default:gen_random_uuid();primaryKey" json:"id"`
+	Username       string      `gorm:"type:text;not null;uniqueIndex" json:"username"`
+	Email          string      `gorm:"type:text;not null;uniqueIndex" json:"email"`
 	HashedPassword string      `gorm:"type:text;not null" json:"-"`
 	FirstName      string      `gorm:"type:text;not null" json:"first_name"`
 	LastName       string      `gorm:"type:text;not null" json:"last_name"`
-	DateOfBirth    *time.Time  `gorm:"type:date" json:"date_of_birth,omitempty"`
-	Gender         *GenderType `gorm:"type:gender_type" json:"gender,omitempty"`
-	RoleType       *RoleType   `gorm:"type:role_type;default:'USER'" json:"role_type,omitempty"`
-	IsVerified     bool        `gorm:"default:false" json:"is_verified,omitempty"`
+	DateOfBirth    *time.Time  `gorm:"type:timestamp" json:"date_of_birth,omitempty"`
+	Gender         *GenderType `gorm:"type:text" json:"gender,omitempty"`
+	RoleType       RoleType    `gorm:"type:text;default:'USER'" json:"role_type"`
+	IsVerified     bool        `gorm:"default:false" json:"is_verified"`
 	Avatar         *string     `gorm:"type:text" json:"avatar,omitempty"`
 	CreatedAt      time.Time   `gorm:"type:timestamp;default:current_timestamp" json:"created_at"`
 	UpdatedAt      time.Time   `gorm:"type:timestamp;default:current_timestamp" json:"updated_at"`
 }
 
 type Service struct {
-	ID                 uuid.UUID `json:"id" db:"id"`
-	OwnerID            uuid.UUID `json:"owner_id" db:"owner_id"`
-	ServiceName        string    `json:"service_name" db:"service_name"`
-	ServiceLogo        *string   `json:"service_logo,omitempty" db:"service_logo"`
-	ServiceDescription *string   `json:"service_description,omitempty" db:"service_description"`
-	CreatedAt          time.Time `json:"created_at" db:"created_at"`
-	UpdatedAt          time.Time `json:"updated_at" db:"updated_at"`
+	ID                 uuid.UUID `gorm:"type:uuid;default:gen_random_uuid();primaryKey" json:"id"`
+	OwnerID            uuid.UUID `gorm:"type:uuid" json:"owner_id"`
+	ServiceName        string    `gorm:"type:text;not null" json:"service_name"`
+	ServiceLogo        *string   `gorm:"type:text" json:"service_logo,omitempty"`
+	ServiceDescription *string   `gorm:"type:text" json:"service_description,omitempty"`
+	CreatedAt          time.Time `gorm:"type:timestamp;default:current_timestamp" json:"created_at"`
+	UpdatedAt          time.Time `gorm:"type:timestamp;default:current_timestamp" json:"updated_at"`
+
+	// Add relationships
+	Owner Account        `gorm:"foreignKey:OwnerID"`
+	Users []ServicesUser `gorm:"foreignKey:ServiceID"`
 }
 
-type ServiceUser struct {
-	ID         uuid.UUID `json:"id" db:"id"`
-	ServiceID  uuid.UUID `json:"service_id" db:"service_id"`
-	UserID     uuid.UUID `json:"user_id" db:"user_id"`
-	IsVerified bool      `json:"is_verified" db:"is_verified"`
-	CreatedAt  time.Time `json:"created_at" db:"created_at"`
-	UpdatedAt  time.Time `json:"updated_at" db:"updated_at"`
+type ServicesUser struct {
+	ID         uuid.UUID `gorm:"type:uuid;default:gen_random_uuid();primaryKey" json:"id"`
+	ServiceID  uuid.UUID `gorm:"type:uuid" json:"service_id"`
+	UserID     uuid.UUID `gorm:"type:uuid" json:"user_id"`
+	IsVerified bool      `gorm:"default:false" json:"is_verified"`
+	CreatedAt  time.Time `gorm:"type:timestamp;default:current_timestamp" json:"created_at"`
+	UpdatedAt  time.Time `gorm:"type:timestamp;default:current_timestamp" json:"updated_at"`
+
+	// Add relationships
+	User    Account `gorm:"foreignKey:UserID"`
+	Service Service `gorm:"foreignKey:ServiceID"`
 }
 
 type RefreshToken struct {
-	ID           uuid.UUID `json:"id" db:"id"`
-	UserID       uuid.UUID `json:"user_id" db:"user_id"`
-	ServiceID    uuid.UUID `json:"service_id" db:"service_id"`
-	RefreshToken string    `json:"refresh_token" db:"refresh_token"`
-	ExpiresAt    time.Time `json:"expires_at" db:"expires_at"`
-	CreatedAt    time.Time `json:"created_at" db:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at" db:"updated_at"`
+	ID           uuid.UUID  `gorm:"type:uuid;default:gen_random_uuid();primaryKey" json:"id"`
+	UserID       uuid.UUID  `gorm:"type:uuid;not null" json:"user_id"`
+	ServiceID    *uuid.UUID `gorm:"type:uuid" json:"service_id,omitempty"` // Made optional
+	RefreshToken string     `gorm:"type:text;not null" json:"refresh_token"`
+	ExpiresAt    time.Time  `gorm:"type:timestamp;not null" json:"expires_at"`
+	CreatedAt    time.Time  `gorm:"type:timestamp;default:current_timestamp" json:"created_at"`
+	UpdatedAt    time.Time  `gorm:"type:timestamp;default:current_timestamp" json:"updated_at"`
 }
 
 type AuthorizationToken struct {
