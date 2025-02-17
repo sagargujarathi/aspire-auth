@@ -21,7 +21,7 @@ func (h *ServiceHandler) UpdateService(c *fiber.Ctx) error {
 	}
 
 	var service models.Service
-	if err := h.DB.Where("id = ? AND owner_id = ?", serviceID, authToken.ID).First(&service).Error; err != nil {
+	if err := h.DB.Where("id = ? AND owner_id = ?", serviceID, authToken.UserID).First(&service).Error; err != nil {
 		return c.Status(404).JSON(response.APIResponse{
 			Success: false,
 			Message: "Service not found or not authorized",

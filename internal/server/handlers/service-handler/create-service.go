@@ -21,7 +21,15 @@ func (h *ServiceHandler) CreateService(c *fiber.Ctx) error {
 
 	// Get owner's ID from auth token
 	authToken := c.Locals("auth").(*models.AuthorizationToken)
-	ownerID, err := uuid.Parse(authToken.ID)
+
+	if authToken.TokenType != "ACCOUNT" {
+		return c.Status(401).JSON(response.APIResponse{
+			Success: false,
+			Message: "Unauthorized",
+		})
+	}
+
+	ownerID, err := uuid.Parse(authToken.UserID)
 	if err != nil {
 		return c.Status(400).JSON(response.APIResponse{
 			Success: false,

@@ -13,7 +13,7 @@ func (h *ServiceHandler) DeleteService(c *fiber.Ctx) error {
 
 	// Check ownership
 	var service models.Service
-	if err := h.DB.Where("id = ? AND owner_id = ?", serviceID, authToken.ID).First(&service).Error; err != nil {
+	if err := h.DB.Where("id = ? AND owner_id = ?", serviceID, authToken.UserID).First(&service).Error; err != nil {
 		return utils.SendError(c, fiber.StatusNotFound, "Service not found or not authorized")
 	}
 

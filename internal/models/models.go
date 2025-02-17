@@ -9,6 +9,7 @@ import (
 
 type GenderType string
 type RoleType string
+type TokenType string
 
 const (
 	GenderMale   GenderType = "MALE"
@@ -16,6 +17,9 @@ const (
 
 	RoleUser  RoleType = "USER"
 	RoleAdmin RoleType = "ADMIN"
+
+	AccountToken TokenType = "ACCOUNT"
+	ServiceToken TokenType = "SERVICE"
 )
 
 type Account struct {
@@ -65,6 +69,7 @@ type RefreshToken struct {
 	ID           uuid.UUID  `gorm:"type:uuid;default:gen_random_uuid();primaryKey" json:"id"`
 	UserID       uuid.UUID  `gorm:"type:uuid;not null" json:"user_id"`
 	ServiceID    *uuid.UUID `gorm:"type:uuid" json:"service_id,omitempty"` // Made optional
+	TokenType    TokenType  `gorm:"type:text;not null" json:"token_type"`
 	RefreshToken string     `gorm:"type:text;not null" json:"refresh_token"`
 	ExpiresAt    time.Time  `gorm:"type:timestamp;not null" json:"expires_at"`
 	CreatedAt    time.Time  `gorm:"type:timestamp;default:current_timestamp" json:"created_at"`
@@ -72,17 +77,19 @@ type RefreshToken struct {
 }
 
 type AuthorizationToken struct {
-	ID       string   `json:"id"`
-	RoleType RoleType `json:"role_type"`
-	Exp      int64    `json:"exp"`
+	UserID    string    `json:"user_id"`
+	RoleType  RoleType  `json:"role_type"`
+	ServiceID *string   `json:"service_id"`
+	TokenType TokenType `json:"token_type"`
+	ExpiresAt int64     `json:"expires_at"`
 }
 
 // Implement jwt.Claims interface
 func (t *AuthorizationToken) GetExpirationTime() (*jwt.NumericDate, error) {
-	if t.Exp == 0 {
+	if t.ExpiresAt == 0 {
 		return nil, nil
 	}
-	return jwt.NewNumericDate(time.Unix(t.Exp, 0)), nil
+	return jwt.NewNumericDate(time.Unix(t.ExpiresAt, 0)), nil
 }
 
 func (t *AuthorizationToken) GetIssuedAt() (*jwt.NumericDate, error) {
@@ -107,10 +114,10 @@ func (t *AuthorizationToken) GetAudience() (jwt.ClaimStrings, error) {
 
 // Validate token claims
 func (t *AuthorizationToken) Valid() error {
-	if t.ID == "" {
+	if t.UserID == "" || t.TokenType == "" || t.ExpiresAt == 0 {
 		return jwt.ErrTokenInvalidClaims
 	}
-	if t.Exp < time.Now().Unix() {
+	if t.ExpiresAt < time.Now().Unix() {
 		return jwt.ErrTokenExpired
 	}
 	return nil

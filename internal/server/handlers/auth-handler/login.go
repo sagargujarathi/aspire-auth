@@ -45,9 +45,10 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 	}
 
 	claims := &jwt.MapClaims{
-		"id":        account.ID.String(),
-		"role_type": account.RoleType,
-		"exp":       time.Now().Add(time.Minute * 15).Unix(),
+		"user_id":    account.ID.String(),
+		"role_type":  account.RoleType,
+		"token_type": "ACCOUNT",
+		"expires_at": time.Now().Add(time.Minute * 15).Unix(),
 	}
 
 	accessToken, err := helpers.GenerateAccessToken(claims)
@@ -59,9 +60,10 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 	}
 
 	refreshClaims := &jwt.MapClaims{
-		"id":        account.ID.String(),
-		"role_type": account.RoleType,
-		"exp":       time.Now().Add(time.Hour * 24 * 7).Unix(),
+		"user_id":    account.ID.String(),
+		"role_type":  account.RoleType,
+		"token_type": "ACCOUNT",
+		"expires_at": time.Now().Add(time.Hour * 24 * 7).Unix(),
 	}
 
 	refreshToken, err := helpers.GenerateRefreshToken(refreshClaims)
@@ -75,6 +77,7 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 	refreshTokenModel := models.RefreshToken{
 		UserID:       account.ID,
 		RefreshToken: refreshToken,
+		TokenType:    "ACCOUNT",
 		ExpiresAt:    time.Now().Add(time.Hour * 24 * 7),
 	}
 

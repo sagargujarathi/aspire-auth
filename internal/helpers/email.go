@@ -4,6 +4,7 @@ import (
 	"aspire-auth/internal/config"
 	"bytes"
 	"crypto/tls"
+	"fmt"
 	"html/template"
 	"time"
 
@@ -50,6 +51,8 @@ func SendVerificationEmail(to, otp string, config *config.Config) error {
 		config.Email.Username,
 		config.Email.Password,
 	)
+
+	fmt.Println(config.Email.Host, config.Email.Port, config.Email.Username, config.Email.Password)
 
 	// Set TLS config with InsecureSkipVerify
 	d.TLSConfig = &tls.Config{

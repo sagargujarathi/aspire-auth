@@ -101,6 +101,7 @@ func (s *APIServer) InitHandlers() {
 	s.app.Post("/login", s.handlers.Auth.Login)
 	s.app.Post("/refresh-token", s.handlers.Auth.RefreshToken)
 	s.app.Post("/resend-otp", s.handlers.Account.ResendOTP)
+	s.app.Post("/login-service", s.handlers.Service.LoginService)
 
 	protected := s.app.Group("", middleware.AuthMiddleware)
 

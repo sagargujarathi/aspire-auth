@@ -13,19 +13,14 @@ func (h *ServiceHandler) ListMyServices(c *fiber.Ctx) error {
 	var services []models.Service
 	var total int64
 
-	if err := h.DB.Model(&models.Service{}).Where("owner_id = ?", authToken.ID).Count(&total).Error; err != nil {
+	if err := h.DB.Where("owner_id = ?", authToken.UserID).Find(&services).Error; err != nil {
 		return c.Status(500).JSON(response.APIResponse{
 			Success: false,
 			Message: "Error fetching services",
 		})
 	}
 
-	if err := h.DB.Where("owner_id = ?", authToken.ID).Find(&services).Error; err != nil {
-		return c.Status(500).JSON(response.APIResponse{
-			Success: false,
-			Message: "Error fetching services",
-		})
-	}
+	total = int64(len(services))
 
 	serviceResponses := make([]response.ServiceResponse, len(services))
 	for i, service := range services {

@@ -64,3 +64,9 @@ type ResendOTPRequest struct {
 type RefreshTokenRequest struct {
 	RefreshToken string `json:"refresh_token" validate:"required"`
 }
+
+type LoginServiceRequest struct {
+	ServiceID string `json:"service_id" validate:"required"`
+	Email     string `json:"email" validate:"required"`
+	Password  string `json:"password" validate:"required"`
+}

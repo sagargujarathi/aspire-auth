@@ -9,6 +9,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 )
 
 func (h *AuthHandler) RefreshToken(c *fiber.Ctx) error {
@@ -27,15 +28,19 @@ func (h *AuthHandler) RefreshToken(c *fiber.Ctx) error {
 	}
 
 	// Verify refresh token
-	claims := jwt.MapClaims{}
-	token, err := jwt.ParseWithClaims(tokenString, &claims, func(token *jwt.Token) (interface{}, error) {
-		return []byte(h.Config.JWT.RefreshTokenSecret), nil
-	})
+	authToken := &models.AuthorizationToken{}
 
-	if err != nil || !token.Valid {
+	if err := helpers.ParseAccessToken(tokenString, authToken); err != nil {
 		return c.Status(401).JSON(response.APIResponse{
 			Success: false,
-			Message: "Invalid refresh token",
+			Message: "Invalid token",
+		})
+	}
+
+	if authToken.TokenType != "ACCOUNT" {
+		return c.Status(401).JSON(response.APIResponse{
+			Success: false,
+			Message: "Unauthorized",
 		})
 	}
 
@@ -49,13 +54,14 @@ func (h *AuthHandler) RefreshToken(c *fiber.Ctx) error {
 	}
 
 	// Generate new access token
-	userID := claims["id"].(string)
-	roleType := models.RoleType(claims["role_type"].(string))
+	userID := authToken.UserID
+	roleType := authToken.RoleType
 
 	newAccessTokenClaims := &jwt.MapClaims{
-		"id":        userID,
-		"role_type": roleType,
-		"exp":       time.Now().Add(time.Minute * 15).Unix(),
+		"user_id":    userID,
+		"token_type": "ACCOUNT",
+		"role_type":  roleType,
+		"expires_at": time.Now().Add(time.Minute * 15).Unix(),
 	}
 
 	newAccessToken, err := helpers.GenerateAccessToken(newAccessTokenClaims)
@@ -68,9 +74,10 @@ func (h *AuthHandler) RefreshToken(c *fiber.Ctx) error {
 
 	// Generate new refresh token
 	newRefreshTokenClaims := &jwt.MapClaims{
-		"id":        userID,
-		"role_type": roleType,
-		"exp":       time.Now().Add(time.Hour * 24 * 7).Unix(),
+		"user_id":    userID,
+		"token_type": "ACCOUNT",
+		"role_type":  roleType,
+		"expires_at": time.Now().Add(time.Hour * 24 * 7).Unix(),
 	}
 
 	newRefreshToken, err := helpers.GenerateRefreshToken(newRefreshTokenClaims)
@@ -81,9 +88,12 @@ func (h *AuthHandler) RefreshToken(c *fiber.Ctx) error {
 		})
 	}
 
-	// Update refresh token in database
-	refreshTokenModel.RefreshToken = newRefreshToken
-	refreshTokenModel.ExpiresAt = time.Now().Add(time.Hour * 24 * 7)
+	refreshTokenModel = models.RefreshToken{
+		UserID:       uuid.MustParse(userID),
+		TokenType:    "SERVICE",
+		RefreshToken: newRefreshToken,
+		ExpiresAt:    time.Now().Add(time.Hour * 24 * 7),
+	}
 
 	if err := h.DB.Save(&refreshTokenModel).Error; err != nil {
 		return c.Status(500).JSON(response.APIResponse{

@@ -12,7 +12,7 @@ func (h *ServiceHandler) LeaveService(c *fiber.Ctx) error {
 	authToken := c.Locals("auth").(*models.AuthorizationToken)
 
 	// Delete service user record
-	result := h.DB.Where("service_id = ? AND user_id = ?", serviceID, authToken.ID).Delete(&models.ServicesUser{})
+	result := h.DB.Where("service_id = ? AND user_id = ?", serviceID, authToken.UserID).Delete(&models.ServicesUser{})
 	if result.Error != nil {
 		return utils.SendError(c, fiber.StatusInternalServerError, "Error leaving the service")
 	}

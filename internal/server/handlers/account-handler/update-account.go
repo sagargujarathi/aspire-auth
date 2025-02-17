@@ -38,7 +38,7 @@ func (h *AccountHandler) UpdateAccount(c *fiber.Ctx) error {
 		account.DateOfBirth = &req.DateOfBirth
 	}
 
-	if err := h.DB.Model(&models.Account{}).Where("id = ?", authToken.ID).Updates(&account).Error; err != nil {
+	if err := h.DB.Model(&models.Account{}).Where("id = ?", authToken.UserID).Updates(&account).Error; err != nil {
 		log.Printf("Database error: %v", err)
 		return utils.SendError(c, fiber.StatusInternalServerError, "Failed to update account")
 	}
