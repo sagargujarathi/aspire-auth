@@ -1,6 +1,10 @@
 package response
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 type APIResponse struct {
 	Success bool   `json:"success"`
@@ -46,4 +50,17 @@ type ServiceUsersListResponse struct {
 	Message string                `json:"message"`
 	Users   []ServiceUserResponse `json:"users"`
 	Total   int64                 `json:"total"`
+}
+
+type LoginServiceResponse struct {
+	Success      bool   `json:"success"`
+	Message      string `json:"message"`
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+}
+
+type SignUpServiceResponse struct {
+	Success       bool      `json:"success"`
+	Message       string    `json:"message"`
+	ServiceUserID uuid.UUID `json:"service_user_id"`
 }

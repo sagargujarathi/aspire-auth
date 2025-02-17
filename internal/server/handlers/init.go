@@ -2,23 +2,22 @@ package handlers
 
 import (
 	"aspire-auth/internal/container"
-
-	"github.com/gofiber/fiber/v2"
+	"aspire-auth/internal/server/handlers/account-handler"
+	"aspire-auth/internal/server/handlers/auth-handler"
+	"aspire-auth/internal/server/handlers/service-handler"
 )
 
 type Handlers struct {
-	Account *AccountHandler
-	Auth    *AuthHandler
-	Service *ServiceHandler
+	Account *account.AccountHandler
+	Auth    *auth.AuthHandler
+	Service *service.ServiceHandler
 }
 
-func InitHandlers(c *container.Container, app *fiber.App) *Handlers {
-	// Create base handler first
-	baseHandler := NewBaseHandler(c.DB, c.Redis, app)
+func InitHandlers(container *container.Container) *Handlers {
 
 	return &Handlers{
-		Account: NewAccountHandler(baseHandler),
-		Auth:    NewAuthHandler(baseHandler, c.AuthUseCase),
-		Service: NewServiceHandler(baseHandler),
+		Account: account.NewAccountHandler(container),
+		Auth:    auth.NewAuthHandler(container),
+		Service: service.NewServiceHandler(container),
 	}
 }
