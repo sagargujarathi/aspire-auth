@@ -1,12 +1,10 @@
 package helpers
 
 import (
+	"aspire-auth/internal/config"
 	"bytes"
 	"crypto/tls"
-	"fmt"
 	"html/template"
-	"os"
-	"strconv"
 	"time"
 
 	"gopkg.in/gomail.v2"
@@ -18,7 +16,7 @@ type EmailData struct {
 	Year  int
 }
 
-func SendVerificationEmail(to, otp string) error {
+func SendVerificationEmail(to, otp string, config *config.Config) error {
 	// Parse template from file
 	t, err := template.ParseFiles("templates/email_verification.html")
 	if err != nil {
@@ -38,34 +36,20 @@ func SendVerificationEmail(to, otp string) error {
 		return err
 	}
 
-	EMAIL_FROM := os.Getenv("EMAIL_FROM")
-
 	// Create new message
 	m := gomail.NewMessage()
-	m.SetHeader("From", EMAIL_FROM)
+	m.SetHeader("From", config.Email.From)
 	m.SetHeader("To", to)
 	m.SetHeader("Subject", "Verify Your Aspire Auth Account")
 	m.SetBody("text/html", body.String())
 
-	// Parse SMTP port from env
-	port, err := strconv.Atoi(os.Getenv("SMTP_PORT"))
-	if err != nil {
-		return err
-	}
-
-	SMTP_HOST := os.Getenv("SMTP_HOST")
-	EMAIL_USERNAME := os.Getenv("EMAIL_USERNAME")
-	EMAIL_PASSWORD := os.Getenv("EMAIL_PASSWORD")
-
 	// Create dialer
 	d := gomail.NewDialer(
-		SMTP_HOST,
-		port,
-		EMAIL_USERNAME,
-		EMAIL_PASSWORD,
+		config.Email.Host,
+		config.Email.Port,
+		config.Email.Username,
+		config.Email.Password,
 	)
-
-	fmt.Println(SMTP_HOST, port, EMAIL_USERNAME, EMAIL_PASSWORD, EMAIL_FROM)
 
 	// Set TLS config with InsecureSkipVerify
 	d.TLSConfig = &tls.Config{

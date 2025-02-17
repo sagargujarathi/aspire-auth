@@ -8,7 +8,6 @@ import (
 	"context"
 	"encoding/json"
 	"log"
-	"os"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -24,22 +23,22 @@ type APIServer struct {
 	handlers  *handlers.Handlers
 }
 
-func NewAPIServer() (*APIServer, error) {
+func NewAPIServer() *APIServer {
 	cfg := config.Load()
 
 	db := initDatabase(cfg)
 
-	redis := initRedis()
+	redis := initRedis(cfg)
 	app := initFiber(cfg)
-	container := container.NewContainer(cfg, db, redis)
+	container := container.NewContainer(cfg, db, redis, app)
 
-	h := handlers.InitHandlers(container, app)
+	h := handlers.InitHandlers(container)
 
 	return &APIServer{
 		container: container,
 		app:       app,
 		handlers:  h,
-	}, nil
+	}
 }
 
 func initDatabase(cfg *config.Config) *gorm.DB {
@@ -50,11 +49,11 @@ func initDatabase(cfg *config.Config) *gorm.DB {
 	return db
 }
 
-func initRedis() *redis.Client {
+func initRedis(config *config.Config) *redis.Client {
 	redisClient := redis.NewClient(&redis.Options{
-		Addr:        os.Getenv("REDIS_ADDRESS"),
-		Password:    os.Getenv("REDIS_PASSWORD"),
-		DB:          0,
+		Addr:        config.Redis.Address,
+		Password:    config.Redis.Password,
+		DB:          config.Redis.DB,
 		DialTimeout: 5 * time.Second,
 		MaxRetries:  3,
 	})
@@ -90,10 +89,7 @@ func initFiber(cfg *config.Config) *fiber.App {
 	}))
 
 	// Add JSON content type middleware
-	app.Use(func(c *fiber.Ctx) error {
-		c.Set("Content-Type", "application/json")
-		return c.Next()
-	})
+	app.Use(middleware.ContentType)
 
 	return app
 }
@@ -106,18 +102,21 @@ func (s *APIServer) InitHandlers() {
 	s.app.Post("/refresh-token", s.handlers.Auth.RefreshToken)
 	s.app.Post("/resend-otp", s.handlers.Account.ResendOTP)
 
+	protected := s.app.Group("", middleware.AuthMiddleware)
+
 	// Protected routes
-	s.app.Put("/account", middleware.AuthMiddleware(), s.handlers.Account.UpdateAccount)
-	s.app.Delete("/account", middleware.AuthMiddleware(), s.handlers.Account.DeleteAccount)
+	protected.Put("/account", s.handlers.Account.UpdateAccount)
+	protected.Delete("/account", s.handlers.Account.DeleteAccount)
 
 	// Service routes
-	s.app.Post("/service", middleware.AuthMiddleware(), s.handlers.Service.CreateService)
-	s.app.Put("/service/:id", middleware.AuthMiddleware(), s.handlers.Service.UpdateService)
-	s.app.Get("/service/my", middleware.AuthMiddleware(), s.handlers.Service.ListMyServices)
-	s.app.Post("/service/signup", middleware.AuthMiddleware(), s.handlers.Service.SignupToService)
-	s.app.Post("/service/users", middleware.AuthMiddleware(), s.handlers.Service.ListServiceUsers)
-	s.app.Delete("/service/:id", middleware.AuthMiddleware(), s.handlers.Service.DeleteService)
-	s.app.Delete("/service/:id/leave", middleware.AuthMiddleware(), s.handlers.Service.LeaveService)
+
+	protected.Post("/service", s.handlers.Service.CreateService)
+	protected.Put("/service/:id", s.handlers.Service.UpdateService)
+	protected.Get("/service/my", s.handlers.Service.ListMyServices)
+	protected.Post("/service/signup", s.handlers.Service.SignupToService)
+	protected.Post("/service/users", s.handlers.Service.ListServiceUsers)
+	protected.Delete("/service/:id", s.handlers.Service.DeleteService)
+	protected.Delete("/service/:id/leave", s.handlers.Service.LeaveService)
 }
 
 func (s *APIServer) Run() error {

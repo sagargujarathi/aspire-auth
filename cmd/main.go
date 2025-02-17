@@ -12,13 +12,7 @@ func main() {
 		log.Fatal("Error loading .env file")
 	}
 
-	// Initialize server
-	server, err := server.NewAPIServer()
-	if err != nil {
-		log.Fatalf("Failed to initialize server: %v", err)
-	}
+	server := server.NewAPIServer()
 
-	if err := server.Run(); err != nil {
-		log.Fatalf("Server failed: %v", err)
-	}
+	log.Fatalf("Server failed: %v", server.Run())
 }
