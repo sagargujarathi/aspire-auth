@@ -3,7 +3,6 @@ package models
 import (
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )
 
@@ -66,62 +65,46 @@ type ServicesUser struct {
 	Service Service `gorm:"foreignKey:ServiceID"`
 }
 
-type RefreshToken struct {
-	ID           uuid.UUID  `gorm:"type:uuid;default:gen_random_uuid();primaryKey" json:"id"`
-	UserID       uuid.UUID  `gorm:"type:uuid;not null" json:"user_id"`
-	ServiceID    *uuid.UUID `gorm:"type:uuid" json:"service_id,omitempty"` // Made optional
-	RefreshToken string     `gorm:"type:text;not null" json:"refresh_token"`
-	ExpiresAt    time.Time  `gorm:"type:timestamp;not null" json:"expires_at"`
-	CreatedAt    time.Time  `gorm:"type:timestamp;default:current_timestamp" json:"created_at"`
-	UpdatedAt    time.Time  `gorm:"type:timestamp;default:current_timestamp" json:"updated_at"`
+type AccountRefreshToken struct {
+	ID       uuid.UUID `gorm:"type:uuid;default:gen_random_uuid();primaryKey" json:"id"`
+	UserID   uuid.UUID `gorm:"type:uuid;not null" json:"user_id"`
+	RoleType RoleType  `gorm:"type:text;not null" json:"role_type"`
+
+	RefreshToken string    `gorm:"type:text;not null" json:"refresh_token"`
+	ExpiresAt    time.Time `gorm:"type:timestamp;not null" json:"expires_at"`
+	CreatedAt    time.Time `gorm:"type:timestamp;default:current_timestamp" json:"created_at"`
+	UpdatedAt    time.Time `gorm:"type:timestamp;default:current_timestamp" json:"updated_at"`
+}
+
+type ServiceRefreshToken struct {
+	ID        uuid.UUID `gorm:"type:uuid;default:gen_random_uuid();primaryKey" json:"id"`
+	UserID    uuid.UUID `gorm:"type:uuid;not null" json:"user_id"`
+	ServiceID uuid.UUID `gorm:"type:uuid" json:"service_id"`
+	RoleType  RoleType  `gorm:"type:text;not null" json:"role_type"`
+
+	RefreshToken string    `gorm:"type:text;not null" json:"refresh_token"`
+	ExpiresAt    time.Time `gorm:"type:timestamp;not null" json:"expires_at"`
+	CreatedAt    time.Time `gorm:"type:timestamp;default:current_timestamp" json:"created_at"`
+	UpdatedAt    time.Time `gorm:"type:timestamp;default:current_timestamp" json:"updated_at"`
+}
+
+type AccountAuthorizationToken struct {
+	baseClaims
+	UserID    string   `json:"user_id"`
+	RoleType  RoleType `json:"role_type"`
+	ExpiresAt int64    `json:"expires_at"`
+	IssuedAt  int64    `json:"issued_at"`
+}
+
+type ServiceAuthorizationToken struct {
+	baseClaims
+	UserID    string   `json:"user_id"`
+	RoleType  RoleType `json:"role_type"`
+	ServiceID string   `json:"service_id"`
+	ExpiresAt int64    `json:"expires_at"`
+	IssuedAt  int64    `json:"issued_at"`
 }
 
 type ServiceSecretKey struct {
 	SecretKey string `json:"secret_key"`
-}
-
-type AuthorizationToken struct {
-	UserID    string   `json:"user_id"`
-	RoleType  RoleType `json:"role_type"`
-	ServiceID *string  `json:"service_id"`
-	ExpiresAt int64    `json:"expires_at"`
-}
-
-// Implement jwt.Claims interface
-func (t *AuthorizationToken) GetExpirationTime() (*jwt.NumericDate, error) {
-	if t.ExpiresAt == 0 {
-		return nil, nil
-	}
-	return jwt.NewNumericDate(time.Unix(t.ExpiresAt, 0)), nil
-}
-
-func (t *AuthorizationToken) GetIssuedAt() (*jwt.NumericDate, error) {
-	return nil, nil
-}
-
-func (t *AuthorizationToken) GetNotBefore() (*jwt.NumericDate, error) {
-	return nil, nil
-}
-
-func (t *AuthorizationToken) GetIssuer() (string, error) {
-	return "", nil
-}
-
-func (t *AuthorizationToken) GetSubject() (string, error) {
-	return "", nil
-}
-
-func (t *AuthorizationToken) GetAudience() (jwt.ClaimStrings, error) {
-	return nil, nil
-}
-
-// Validate token claims
-func (t *AuthorizationToken) Valid() error {
-	if t.UserID == "" || t.ExpiresAt == 0 {
-		return jwt.ErrTokenInvalidClaims
-	}
-	if t.ExpiresAt < time.Now().Unix() {
-		return jwt.ErrTokenExpired
-	}
-	return nil
 }

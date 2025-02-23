@@ -8,7 +8,7 @@ import (
 )
 
 func (h *AccountHandler) DeleteAccount(c *fiber.Ctx) error {
-	authToken := c.Locals("auth").(*models.AuthorizationToken)
+	authToken := c.Locals("auth").(*models.AccountAuthorizationToken)
 
 	// Delete the account
 	if err := h.DB.Delete(&models.Account{}, "id = ?", authToken.UserID).Error; err != nil {

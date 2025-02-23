@@ -9,7 +9,7 @@ import (
 )
 
 func (h *AccountHandler) GetAccountDetails(c *fiber.Ctx) error {
-	authToken := c.Locals("auth").(*models.AuthorizationToken)
+	authToken := c.Locals("auth").(*models.AccountAuthorizationToken)
 
 	var account models.Account
 	if err := h.DB.Where("id = ?", authToken.UserID).First(&account).Error; err != nil {

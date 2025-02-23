@@ -13,17 +13,17 @@ type Container struct {
 	Config *config.Config
 	DB     *gorm.DB
 	Redis  *redis.Client
-	app    *fiber.App
+	App    *fiber.App
 	JWT    *helpers.JWTHelpers
 }
 
-func NewContainer(cfg *config.Config, db *gorm.DB, redis *redis.Client, app *fiber.App, jwtHelpers *helpers.JWTHelpers) *Container {
+func NewContainer(cfg *config.Config, db *gorm.DB, redis *redis.Client, app *fiber.App, jwt *helpers.JWTHelpers) *Container {
 
 	return &Container{
 		Config: cfg,
 		DB:     db,
 		Redis:  redis,
-		app:    app,
-		JWT:    jwtHelpers,
+		App:    app,
+		JWT:    jwt,
 	}
 }

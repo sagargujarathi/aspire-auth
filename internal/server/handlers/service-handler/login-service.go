@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -54,47 +53,42 @@ func (h *ServiceHandler) LoginService(c *fiber.Ctx) error {
 		return utils.SendError(c, fiber.StatusUnauthorized, "Account or service access not verified")
 	}
 
-	claims := &jwt.MapClaims{
-		"user_id":    serviceUser.ID.String(),
-		"role_type":  account.RoleType,
-		"service_id": service.ID.String(),
-		"expires_at": time.Now().Add(time.Minute * 15).Unix(),
+	var userRoleType models.RoleType = "USER"
+	if service.OwnerID == account.ID {
+		userRoleType = "ADMIN"
 	}
 
-	accessToken, err := h.Container.JWT.GenerateServiceAccessToken(claims)
+	accountTokenClaims := &models.ServiceRefreshToken{
+		UserID:    account.ID,
+		RoleType:  userRoleType,
+		ServiceID: service.ID,
+		ExpiresAt: time.Now().Add(h.Config.JWT.Account.AccessExpiry),
+	}
+
+	refreshTokenModel := models.ServiceRefreshToken{
+		UserID:    account.ID,
+		ServiceID: service.ID,
+		RoleType:  userRoleType,
+		ExpiresAt: time.Now().Add(h.Config.JWT.Account.RefreshExpiry),
+	}
+
+	accessToken, err := h.Container.JWT.GenerateServiceAccessToken(accountTokenClaims)
 	if err != nil {
-		return c.Status(500).JSON(response.APIResponse{
-			Success: false,
-			Message: "Error generating access token",
-		})
+		log.Printf("Error generating access token: %v", err)
+		return utils.SendError(c, fiber.StatusInternalServerError, "Error generating access token")
 	}
 
-	refreshClaims := &jwt.MapClaims{
-		"user_id":    serviceUser.ID.String(),
-		"role_type":  account.RoleType,
-		"service_id": service.ID.String(),
-		"expires_at": time.Now().Add(time.Hour * 24 * 7).Unix(),
-	}
-
-	refreshToken, err := h.Container.JWT.GenerateServiceAccessToken(refreshClaims)
+	refreshToken, err := h.Container.JWT.GenerateServiceRefreshToken(accountTokenClaims)
 	if err != nil {
-		return c.Status(500).JSON(response.APIResponse{
-			Success: false,
-			Message: "Error generating refresh token",
-		})
+		log.Printf("Error generating refresh token: %v", err)
+		return utils.SendError(c, fiber.StatusInternalServerError, "Error generating refresh token")
 	}
 
-	refreshTokenModel := models.RefreshToken{
-		UserID:       account.ID,
-		RefreshToken: refreshToken,
-		ServiceID:    &service.ID,
-	}
+	refreshTokenModel.RefreshToken = refreshToken
+
 	if err := h.DB.Create(&refreshTokenModel).Error; err != nil {
 		log.Printf("Error saving refresh token: %v", err)
-		return c.Status(500).JSON(response.APIResponse{
-			Success: false,
-			Message: "Error saving refresh token",
-		})
+		return utils.SendError(c, fiber.StatusInternalServerError, "Error saving refresh token")
 	}
 
 	return c.Status(200).JSON(response.LoginServiceResponse{

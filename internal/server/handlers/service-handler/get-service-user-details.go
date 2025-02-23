@@ -8,7 +8,7 @@ import (
 )
 
 func (h *ServiceHandler) GetServiceUserDetails(context *fiber.Ctx) error {
-	authToken := context.Locals("auth").(*models.AuthorizationToken)
+	authToken := context.Locals("auth").(*models.ServiceAuthorizationToken)
 
 	serviceUser := models.ServicesUser{}
 	if err := h.DB.Model(&models.ServicesUser{}).Where("service_id = ? AND id = ?", authToken.ServiceID, authToken.UserID).First(&serviceUser).Error; err != nil {

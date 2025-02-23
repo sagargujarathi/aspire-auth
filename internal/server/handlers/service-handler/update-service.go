@@ -10,7 +10,7 @@ import (
 
 func (h *ServiceHandler) UpdateService(c *fiber.Ctx) error {
 	serviceID := c.Params("id")
-	authToken := c.Locals("auth").(*models.AuthorizationToken)
+	authToken := c.Locals("auth").(*models.AccountAuthorizationToken)
 
 	var req request.UpdateServiceRequest
 	if err := c.BodyParser(&req); err != nil {

@@ -9,7 +9,7 @@ import (
 
 func (h *ServiceHandler) DeleteService(c *fiber.Ctx) error {
 	serviceID := c.Params("id")
-	authToken := c.Locals("auth").(*models.AuthorizationToken)
+	authToken := c.Locals("auth").(*models.AccountAuthorizationToken)
 
 	// Check ownership
 	var service models.Service

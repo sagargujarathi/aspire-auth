@@ -8,7 +8,7 @@ import (
 )
 
 func (h *ServiceHandler) ListMyServices(c *fiber.Ctx) error {
-	authToken := c.Locals("auth").(*models.AuthorizationToken)
+	authToken := c.Locals("auth").(*models.AccountAuthorizationToken)
 
 	var services []models.Service
 	var total int64

@@ -7,7 +7,6 @@ import (
 	"log"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )
 
@@ -21,7 +20,7 @@ func (h *ServiceHandler) CreateService(c *fiber.Ctx) error {
 	}
 
 	// Get owner's ID from auth token
-	authToken := c.Locals("auth").(*models.AuthorizationToken)
+	authToken := c.Locals("auth").(*models.AccountAuthorizationToken)
 
 	ownerID, err := uuid.Parse(authToken.UserID)
 	if err != nil {
@@ -31,11 +30,7 @@ func (h *ServiceHandler) CreateService(c *fiber.Ctx) error {
 		})
 	}
 
-	claims := &jwt.MapClaims{
-		"secret_key": req.SecretKey,
-	}
-
-	SECRET_TOKEN, err := h.Container.JWT.GenerateServiceEncryptToken(claims)
+	SECRET_TOKEN, err := h.Container.JWT.GenerateServiceEncryptToken(req.SecretKey)
 
 	if err != nil {
 		log.Printf("Error generating service secret key: %v", err)

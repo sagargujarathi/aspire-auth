@@ -106,26 +106,27 @@ func (s *APIServer) InitHandlers() {
 	s.app.Post("/resend-otp", s.handlers.Account.ResendOTP)
 	s.app.Post("/login", s.handlers.Auth.Login)
 	s.app.Post("/refresh-token", s.handlers.Auth.RefreshToken)
-	s.app.Post("/login-service", s.handlers.Service.LoginService)
-
-	accountProtected := s.app.Group("", s.middleware.AccountAuthMiddleware)
-	serviceProtected := s.app.Group("", s.middleware.ServiceAuthMiddlerware)
-
-	// Protected routes
-	accountProtected.Put("/account", s.handlers.Account.UpdateAccount)
-	accountProtected.Delete("/account", s.handlers.Account.DeleteAccount)
-	accountProtected.Get("/account", s.handlers.Account.GetAccountDetails)
-
-	// Service routes
-
-	accountProtected.Post("/service", s.handlers.Service.CreateService)
-	accountProtected.Put("/service/:id", s.handlers.Service.UpdateService)
-	accountProtected.Get("/service/my", s.handlers.Service.ListMyServices)
+	s.app.Post("/service/login", s.handlers.Service.LoginService)
 	s.app.Post("/service/signup", s.handlers.Service.SignupToService)
-	accountProtected.Post("/service/users", s.handlers.Service.ListServiceUsers)
-	accountProtected.Delete("/service/:id", s.handlers.Service.DeleteService)
-	serviceProtected.Delete("/service/:id/leave", s.handlers.Service.LeaveService)
-	serviceProtected.Get("/service/user", s.handlers.Service.GetServiceUserDetails)
+
+	// Account protected routes group
+	accountGroup := s.app.Group("/account", s.middleware.AccountAuthMiddleware)
+	accountGroup.Put("/", s.handlers.Account.UpdateAccount)
+	accountGroup.Delete("/", s.handlers.Account.DeleteAccount)
+	accountGroup.Get("/", s.handlers.Account.GetAccountDetails)
+
+	// Service management routes (protected by account auth)
+	serviceManageGroup := s.app.Group("/service", s.middleware.AccountAuthMiddleware)
+	serviceManageGroup.Post("/", s.handlers.Service.CreateService)
+	serviceManageGroup.Put("/:id", s.handlers.Service.UpdateService)
+	serviceManageGroup.Get("/list", s.handlers.Service.ListMyServices)
+	serviceManageGroup.Get("/users", s.handlers.Service.ListServiceUsers)
+	serviceManageGroup.Delete("/:id", s.handlers.Service.DeleteService)
+
+	// Service user routes (protected by service auth)
+	serviceUserGroup := s.app.Group("/service-user", s.middleware.ServiceAuthMiddleware)
+	serviceUserGroup.Delete("/:id/leave", s.handlers.Service.LeaveService)
+	serviceUserGroup.Get("/details", s.handlers.Service.GetServiceUserDetails)
 }
 
 func (s *APIServer) Run() error {

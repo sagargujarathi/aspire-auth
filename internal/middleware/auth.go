@@ -4,6 +4,7 @@ import (
 	"aspire-auth/internal/container"
 	"aspire-auth/internal/models"
 	"aspire-auth/internal/response"
+	"fmt"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -19,19 +20,30 @@ func InitMiddleware(container *container.Container) *Middleware {
 func (h *Middleware) AccountAuthMiddleware(c *fiber.Ctx) error {
 	authorization := c.Get("Authorization")
 	if authorization == "" {
-		return c.Status(401).JSON(response.APIResponse{
+		return c.Status(fiber.StatusUnauthorized).JSON(response.APIResponse{
 			Success: false,
-			Message: "Unauthorized",
+			Message: "Unauthorized: missing token",
 		})
 	}
 
 	token := h.Container.JWT.ExtractToken(authorization)
-	authToken := &models.AuthorizationToken{}
+	fmt.Printf("Received token: %s\n", token) // Debug log
+
+	authToken := &models.AccountAuthorizationToken{}
 
 	if err := h.Container.JWT.ParseAccountAccessToken(token, authToken); err != nil {
-		return c.Status(401).JSON(response.APIResponse{
+		fmt.Printf("Token parsing error: %v\n", err) // Debug log
+		return c.Status(fiber.StatusUnauthorized).JSON(response.APIResponse{
 			Success: false,
-			Message: "Invalid token",
+			Message: fmt.Sprintf("Invalid or expired token: %v", err),
+		})
+	}
+
+	if err := authToken.Valid(); err != nil {
+		fmt.Printf("Token validation error: %v\n", err) // Debug log
+		return c.Status(fiber.StatusUnauthorized).JSON(response.APIResponse{
+			Success: false,
+			Message: "Token validation failed",
 		})
 	}
 
@@ -39,22 +51,33 @@ func (h *Middleware) AccountAuthMiddleware(c *fiber.Ctx) error {
 	return c.Next()
 }
 
-func (h *Middleware) ServiceAuthMiddlerware(c *fiber.Ctx) error {
+func (h *Middleware) ServiceAuthMiddleware(c *fiber.Ctx) error {
 	authorization := c.Get("Authorization")
 	if authorization == "" {
-		return c.Status(401).JSON(response.APIResponse{
+		return c.Status(fiber.StatusUnauthorized).JSON(response.APIResponse{
 			Success: false,
-			Message: "Unauthorized",
+			Message: "Unauthorized: missing token",
 		})
 	}
 
 	token := h.Container.JWT.ExtractToken(authorization)
-	authToken := &models.AuthorizationToken{}
+	fmt.Printf("Received token: %s\n", token) // Debug log
+
+	authToken := &models.ServiceAuthorizationToken{}
 
 	if err := h.Container.JWT.ParseServiceAccessToken(token, authToken); err != nil {
-		return c.Status(401).JSON(response.APIResponse{
+		fmt.Printf("Token parsing error: %v\n", err) // Debug log
+		return c.Status(fiber.StatusUnauthorized).JSON(response.APIResponse{
 			Success: false,
-			Message: "Invalid token",
+			Message: fmt.Sprintf("Invalid or expired token: %v", err),
+		})
+	}
+
+	if err := authToken.Valid(); err != nil {
+		fmt.Printf("Token validation error: %v\n", err) // Debug log
+		return c.Status(fiber.StatusUnauthorized).JSON(response.APIResponse{
+			Success: false,
+			Message: "Token validation failed",
 		})
 	}
 

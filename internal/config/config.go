@@ -95,4 +95,5 @@ func Load() *Config {
 			Port:     587,
 		},
 	}
+
 }

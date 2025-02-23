@@ -16,7 +16,7 @@ func (h *AccountHandler) UpdateAccount(c *fiber.Ctx) error {
 		return utils.SendError(c, fiber.StatusBadRequest, "Invalid request format")
 	}
 
-	authToken := c.Locals("auth").(*models.AuthorizationToken)
+	authToken := c.Locals("auth").(*models.AccountAuthorizationToken)
 
 	account := models.Account{
 		Username:  req.Username,

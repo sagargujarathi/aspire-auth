@@ -9,7 +9,7 @@ import (
 
 func (h *ServiceHandler) LeaveService(c *fiber.Ctx) error {
 	serviceID := c.Params("id")
-	authToken := c.Locals("auth").(*models.AuthorizationToken)
+	authToken := c.Locals("auth").(*models.ServiceAuthorizationToken)
 
 	// Delete service user record
 	result := h.DB.Where("service_id = ? AND user_id = ?", serviceID, authToken.UserID).Delete(&models.ServicesUser{})

@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -43,14 +42,13 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 		})
 	}
 
-	claims := &jwt.MapClaims{
-		"user_id":    account.ID.String(),
-		"role_type":  account.RoleType,
-		"token_type": "ACCOUNT",
-		"expires_at": time.Now().Add(time.Minute * 15).Unix(),
+	tokenModel := models.AccountRefreshToken{
+		UserID:    account.ID,
+		RoleType:  account.RoleType,
+		ExpiresAt: time.Now().Add(time.Hour * 24 * 7),
 	}
 
-	accessToken, err := h.Container.JWT.GenerateAccountAccessToken(claims)
+	accessToken, err := h.Container.JWT.GenerateAccountAccessToken(&tokenModel)
 	if err != nil {
 		return c.Status(500).JSON(response.APIResponse{
 			Success: false,
@@ -58,14 +56,7 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 		})
 	}
 
-	refreshClaims := &jwt.MapClaims{
-		"user_id":    account.ID.String(),
-		"role_type":  account.RoleType,
-		"token_type": "ACCOUNT",
-		"expires_at": time.Now().Add(time.Hour * 24 * 7).Unix(),
-	}
-
-	refreshToken, err := h.Container.JWT.GenerateAccountRefreshToken(refreshClaims)
+	refreshToken, err := h.Container.JWT.GenerateAccountRefreshToken(&tokenModel)
 	if err != nil {
 		return c.Status(500).JSON(response.APIResponse{
 			Success: false,
@@ -73,13 +64,8 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 		})
 	}
 
-	refreshTokenModel := models.RefreshToken{
-		UserID:       account.ID,
-		RefreshToken: refreshToken,
-		ExpiresAt:    time.Now().Add(time.Hour * 24 * 7),
-	}
-
-	if err := h.DB.Create(&refreshTokenModel).Error; err != nil {
+	tokenModel.RefreshToken = refreshToken
+	if err := h.DB.Create(&tokenModel).Error; err != nil {
 		log.Printf("Error saving refresh token: %v", err)
 		return c.Status(500).JSON(response.APIResponse{
 			Success: false,
