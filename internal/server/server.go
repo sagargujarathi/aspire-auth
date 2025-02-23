@@ -47,7 +47,7 @@ func NewAPIServer() *APIServer {
 }
 
 func initDatabase(cfg *config.Config) *gorm.DB {
-	db, err := gorm.Open(postgres.Open(cfg.Database.URL), &gorm.Config{})
+	db, err := gorm.Open(postgres.Open(cfg.Database.URL))
 	if err != nil {
 		log.Fatalf("Error connecting to database: %v", err)
 	}
