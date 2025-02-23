@@ -42,7 +42,7 @@ func (h *ServiceHandler) ListServiceUsers(c *fiber.Ctx) error {
 	userResponses := make([]response.ServiceUserResponse, len(serviceUsers))
 	for i, su := range serviceUsers {
 		userResponses[i] = response.ServiceUserResponse{
-			UserID:     su.UserID.String(),
+			ID:         su.ID.String(),
 			Username:   su.User.Username,
 			Email:      su.User.Email,
 			IsVerified: su.IsVerified,

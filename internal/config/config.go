@@ -29,11 +29,24 @@ type RedisConfig struct {
 	DB       int
 }
 
-type JWTConfig struct {
+type JWTAccountConfig struct {
 	AccessTokenSecret  string
 	RefreshTokenSecret string
 	AccessExpiry       time.Duration
 	RefreshExpiry      time.Duration
+}
+
+type JWTServiceConfig struct {
+	AccessTokenSecret    string
+	RefreshTokenSecret   string
+	AccessExpiry         time.Duration
+	RefreshExpiry        time.Duration
+	ServiceEncryptSecret string
+}
+
+type JWTConfig struct {
+	Account JWTAccountConfig
+	Service JWTServiceConfig
 }
 
 type EmailConfig struct {
@@ -60,17 +73,26 @@ func Load() *Config {
 			DB:       0,
 		},
 		JWT: JWTConfig{
-			AccessTokenSecret:  os.Getenv("ACCESS_TOKEN_SECRET_KEY"),
-			RefreshTokenSecret: os.Getenv("REFRESH_TOKEN_SECRET_KEY"),
-			AccessExpiry:       time.Minute * 15,
-			RefreshExpiry:      time.Hour * 24 * 7,
+			Account: JWTAccountConfig{
+				AccessTokenSecret:  os.Getenv("ACCOUNT_ACCESS_TOKEN_SECRET_KEY"),
+				RefreshTokenSecret: os.Getenv("ACCOUNT_REFRESH_TOKEN_SECRET_KEY"),
+				AccessExpiry:       time.Minute * 15,
+				RefreshExpiry:      time.Hour * 24 * 7,
+			},
+			Service: JWTServiceConfig{
+				AccessTokenSecret:    os.Getenv("SERVICE_ACCESS_TOKEN_SECRET_KEY"),
+				RefreshTokenSecret:   os.Getenv("SERVICE_REFRESH_TOKEN_SECRET_KEY"),
+				AccessExpiry:         time.Minute * 15,
+				RefreshExpiry:        time.Hour * 24 * 7,
+				ServiceEncryptSecret: os.Getenv("SERVICE_ENCRYPT_SECRET_KEY"),
+			},
 		},
 		Email: EmailConfig{
 			From:     os.Getenv("EMAIL_FROM"),
 			Username: os.Getenv("EMAIL_USERNAME"),
 			Password: os.Getenv("EMAIL_PASSWORD"),
 			Host:     os.Getenv("SMTP_HOST"),
-			Port:     587, // Default SMTP port
+			Port:     587,
 		},
 	}
 }

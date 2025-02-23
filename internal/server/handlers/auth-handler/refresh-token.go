@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"aspire-auth/internal/helpers"
 	"aspire-auth/internal/models"
 	"aspire-auth/internal/request"
 	"aspire-auth/internal/response"
@@ -30,17 +29,10 @@ func (h *AuthHandler) RefreshToken(c *fiber.Ctx) error {
 	// Verify refresh token
 	authToken := &models.AuthorizationToken{}
 
-	if err := helpers.ParseAccessToken(tokenString, authToken); err != nil {
+	if err := h.Container.JWT.ParseAccountRefreshToken(tokenString, authToken); err != nil {
 		return c.Status(401).JSON(response.APIResponse{
 			Success: false,
 			Message: "Invalid token",
-		})
-	}
-
-	if authToken.TokenType != "ACCOUNT" {
-		return c.Status(401).JSON(response.APIResponse{
-			Success: false,
-			Message: "Unauthorized",
 		})
 	}
 
@@ -64,7 +56,7 @@ func (h *AuthHandler) RefreshToken(c *fiber.Ctx) error {
 		"expires_at": time.Now().Add(time.Minute * 15).Unix(),
 	}
 
-	newAccessToken, err := helpers.GenerateAccessToken(newAccessTokenClaims)
+	newAccessToken, err := h.Container.JWT.GenerateAccountAccessToken(newAccessTokenClaims)
 	if err != nil {
 		return c.Status(500).JSON(response.APIResponse{
 			Success: false,
@@ -80,7 +72,7 @@ func (h *AuthHandler) RefreshToken(c *fiber.Ctx) error {
 		"expires_at": time.Now().Add(time.Hour * 24 * 7).Unix(),
 	}
 
-	newRefreshToken, err := helpers.GenerateRefreshToken(newRefreshTokenClaims)
+	newRefreshToken, err := h.Container.JWT.GenerateAccountRefreshToken(newRefreshTokenClaims)
 	if err != nil {
 		return c.Status(500).JSON(response.APIResponse{
 			Success: false,
@@ -90,7 +82,6 @@ func (h *AuthHandler) RefreshToken(c *fiber.Ctx) error {
 
 	refreshTokenModel = models.RefreshToken{
 		UserID:       uuid.MustParse(userID),
-		TokenType:    "SERVICE",
 		RefreshToken: newRefreshToken,
 		ExpiresAt:    time.Now().Add(time.Hour * 24 * 7),
 	}

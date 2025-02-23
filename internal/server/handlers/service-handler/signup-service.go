@@ -9,6 +9,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func (h *ServiceHandler) SignupToService(c *fiber.Ctx) error {
@@ -21,14 +22,9 @@ func (h *ServiceHandler) SignupToService(c *fiber.Ctx) error {
 		return utils.SendError(c, fiber.StatusBadRequest, "Service ID is required")
 	}
 
-	authToken := c.Locals("auth").(*models.AuthorizationToken)
 	serviceID, err := uuid.Parse(req.ServiceID)
 	if err != nil {
 		return utils.SendError(c, fiber.StatusBadRequest, "Invalid service ID")
-	}
-
-	if authToken.TokenType != "ACCOUNT" {
-		return utils.SendError(c, fiber.StatusUnauthorized, "Unauthorized")
 	}
 
 	// Check if service exists
@@ -37,23 +33,28 @@ func (h *ServiceHandler) SignupToService(c *fiber.Ctx) error {
 		return utils.SendError(c, fiber.StatusNotFound, "Service not found")
 	}
 
-	userID, err := uuid.Parse(authToken.UserID)
-	if err != nil {
-		return utils.SendError(c, fiber.StatusBadRequest, "Invalid user ID")
+	var account models.Account
+	if err := h.DB.Where("email = ?", req.Email).First(&account).Error; err != nil {
+		return utils.SendError(c, fiber.StatusNotFound, "Account not found")
+	}
+
+	if bcrypt.CompareHashAndPassword([]byte(account.HashedPassword), []byte(req.Password)) != nil {
+		return utils.SendError(c, fiber.StatusUnauthorized, "Invalid credentials")
 	}
 
 	// Check if user is already signed up
 	var existingSignup models.ServicesUser
-	if err := h.DB.Where("service_id = ? AND user_id = ?", serviceID, userID).First(&existingSignup).Error; err == nil {
+	if err := h.DB.Where("service_id = ? AND user_id = ?", serviceID, account.ID).First(&existingSignup).Error; err == nil {
 		return utils.SendError(c, fiber.StatusConflict, "Already signed up to this service")
 	}
 
 	SERVICE_USER_ID := uuid.New()
 
 	serviceUser := models.ServicesUser{
-		ID:        SERVICE_USER_ID,
-		ServiceID: serviceID,
-		UserID:    userID,
+		ID:         SERVICE_USER_ID,
+		ServiceID:  serviceID,
+		UserID:     account.ID,
+		IsVerified: true,
 	}
 
 	if err := h.DB.Create(&serviceUser).Error; err != nil {

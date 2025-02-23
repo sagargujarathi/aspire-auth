@@ -1,13 +1,21 @@
 package helpers
 
 import (
-	"os"
+	"aspire-auth/internal/config"
+	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 )
 
-var ACCESS_TOKEN_SECRET_KEY = []byte(os.Getenv("ACCESS_TOKEN_SECRET_KEY"))
-var REFRESH_TOKEN_SECRET_KEY = []byte(os.Getenv("REFRESH_TOKEN_SECRET_KEY"))
+type JWTHelpers struct {
+	*config.Config
+}
+
+func InitJWTHelpers(cfg *config.Config) *JWTHelpers {
+	return &JWTHelpers{cfg}
+}
+
+// COMMON HELPERS
 
 func GenerateJWT(data *jwt.MapClaims, secretKey []byte) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, data)
@@ -20,16 +28,18 @@ func ParseJWT(tokenString string, claims jwt.Claims, secretKey []byte) (*jwt.Tok
 	})
 }
 
-func GenerateAccessToken(data *jwt.MapClaims) (string, error) {
-	return GenerateJWT(data, ACCESS_TOKEN_SECRET_KEY)
+// ACCOUNT HELPERS
+
+func (h *JWTHelpers) GenerateAccountAccessToken(data *jwt.MapClaims) (string, error) {
+	return GenerateJWT(data, []byte(h.JWT.Account.AccessTokenSecret))
 }
 
-func GenerateRefreshToken(data *jwt.MapClaims) (string, error) {
-	return GenerateJWT(data, REFRESH_TOKEN_SECRET_KEY)
+func (h *JWTHelpers) GenerateAccountRefreshToken(data *jwt.MapClaims) (string, error) {
+	return GenerateJWT(data, []byte(h.JWT.Account.RefreshTokenSecret))
 }
 
-func ParseAccessToken(tokenString string, claims jwt.Claims) error {
-	token, err := ParseJWT(tokenString, claims, ACCESS_TOKEN_SECRET_KEY)
+func (h *JWTHelpers) ParseAccountAccessToken(tokenString string, claims jwt.Claims) error {
+	token, err := ParseJWT(tokenString, claims, []byte(h.JWT.Account.AccessTokenSecret))
 	if err != nil {
 		return err
 	}
@@ -39,8 +49,8 @@ func ParseAccessToken(tokenString string, claims jwt.Claims) error {
 	return nil
 }
 
-func ParseRefreshToken(tokenString string, claims jwt.Claims) error {
-	token, err := ParseJWT(tokenString, claims, REFRESH_TOKEN_SECRET_KEY)
+func (h *JWTHelpers) ParseAccountRefreshToken(tokenString string, claims jwt.Claims) error {
+	token, err := ParseJWT(tokenString, claims, []byte(h.JWT.Account.RefreshTokenSecret))
 	if err != nil {
 		return err
 	}
@@ -50,6 +60,57 @@ func ParseRefreshToken(tokenString string, claims jwt.Claims) error {
 	return nil
 }
 
-func ExtractToken(authorization string) string {
+// SERVICE HELPERS
+
+func (h *JWTHelpers) GenerateServiceAccessToken(data *jwt.MapClaims) (string, error) {
+	return GenerateJWT(data, []byte(h.JWT.Service.AccessTokenSecret))
+}
+
+func (h *JWTHelpers) GenerateServiceRefreshToken(data *jwt.MapClaims) (string, error) {
+	return GenerateJWT(data, []byte(h.JWT.Service.RefreshTokenSecret))
+}
+
+func (h *JWTHelpers) GenerateServiceEncryptToken(data *jwt.MapClaims) (string, error) {
+	return GenerateJWT(data, []byte(h.JWT.Service.ServiceEncryptSecret))
+}
+
+func (h *JWTHelpers) ParseServiceEncryptToken(tokenString string, claims jwt.Claims) error {
+	token, err := ParseJWT(tokenString, claims, []byte(h.JWT.Service.ServiceEncryptSecret))
+	if err != nil {
+		return err
+	}
+	if !token.Valid {
+		return jwt.ErrSignatureInvalid
+	}
+	return nil
+}
+
+func (h *JWTHelpers) ParseServiceAccessToken(tokenString string, claims jwt.Claims) error {
+	token, err := ParseJWT(tokenString, claims, []byte(h.JWT.Service.AccessTokenSecret))
+	if err != nil {
+		return err
+	}
+	if !token.Valid {
+		return jwt.ErrSignatureInvalid
+	}
+	return nil
+}
+
+func (h *JWTHelpers) ParseServiceRefreshToken(tokenString string, claims jwt.Claims) error {
+	token, err := ParseJWT(tokenString, claims, []byte(h.JWT.Service.RefreshTokenSecret))
+	if err != nil {
+		return err
+	}
+	if !token.Valid {
+		return jwt.ErrSignatureInvalid
+	}
+	return nil
+}
+
+func (h *JWTHelpers) ExtractToken(authorization string) string {
 	return authorization[7:]
+}
+
+func FormatTime(t time.Time) string {
+	return t.Format("2006-01-02 15:04:05")
 }

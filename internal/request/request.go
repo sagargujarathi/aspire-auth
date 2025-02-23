@@ -39,6 +39,7 @@ type CreateServiceRequest struct {
 	ServiceName        string  `json:"service_name" validate:"required"`
 	ServiceDescription *string `json:"service_description,omitempty"`
 	ServiceLogo        *string `json:"service_logo,omitempty"`
+	SecretKey          string  `json:"secret_key" validate:"required"`
 }
 
 type UpdateServiceRequest struct {
@@ -49,6 +50,8 @@ type UpdateServiceRequest struct {
 
 type SignupToServiceRequest struct {
 	ServiceID string `json:"service_id" validate:"required"`
+	Email     string `json:"email" validate:"required"`
+	Password  string `json:"password" validate:"required"`
 }
 
 type ServiceUsersListRequest struct {

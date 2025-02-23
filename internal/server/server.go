@@ -3,6 +3,7 @@ package server
 import (
 	"aspire-auth/internal/config"
 	"aspire-auth/internal/container"
+	"aspire-auth/internal/helpers"
 	"aspire-auth/internal/middleware"
 	"aspire-auth/internal/server/handlers"
 	"context"
@@ -18,9 +19,10 @@ import (
 )
 
 type APIServer struct {
-	container *container.Container
-	app       *fiber.App
-	handlers  *handlers.Handlers
+	container  *container.Container
+	app        *fiber.App
+	handlers   *handlers.Handlers
+	middleware *middleware.Middleware
 }
 
 func NewAPIServer() *APIServer {
@@ -30,14 +32,17 @@ func NewAPIServer() *APIServer {
 
 	redis := initRedis(cfg)
 	app := initFiber(cfg)
-	container := container.NewContainer(cfg, db, redis, app)
+	jwtHelpers := helpers.InitJWTHelpers(cfg)
+	container := container.NewContainer(cfg, db, redis, app, jwtHelpers)
+	middleWare := middleware.InitMiddleware(container)
 
 	h := handlers.InitHandlers(container)
 
 	return &APIServer{
-		container: container,
-		app:       app,
-		handlers:  h,
+		container:  container,
+		app:        app,
+		handlers:   h,
+		middleware: middleWare,
 	}
 }
 
@@ -98,26 +103,29 @@ func (s *APIServer) InitHandlers() {
 	// Public routes
 	s.app.Post("/account", s.handlers.Account.CreateAccount)
 	s.app.Post("/verify", s.handlers.Account.VerifyAccount)
+	s.app.Post("/resend-otp", s.handlers.Account.ResendOTP)
 	s.app.Post("/login", s.handlers.Auth.Login)
 	s.app.Post("/refresh-token", s.handlers.Auth.RefreshToken)
-	s.app.Post("/resend-otp", s.handlers.Account.ResendOTP)
 	s.app.Post("/login-service", s.handlers.Service.LoginService)
 
-	protected := s.app.Group("", middleware.AuthMiddleware)
+	accountProtected := s.app.Group("", s.middleware.AccountAuthMiddleware)
+	serviceProtected := s.app.Group("", s.middleware.ServiceAuthMiddlerware)
 
 	// Protected routes
-	protected.Put("/account", s.handlers.Account.UpdateAccount)
-	protected.Delete("/account", s.handlers.Account.DeleteAccount)
+	accountProtected.Put("/account", s.handlers.Account.UpdateAccount)
+	accountProtected.Delete("/account", s.handlers.Account.DeleteAccount)
+	accountProtected.Get("/account", s.handlers.Account.GetAccountDetails)
 
 	// Service routes
 
-	protected.Post("/service", s.handlers.Service.CreateService)
-	protected.Put("/service/:id", s.handlers.Service.UpdateService)
-	protected.Get("/service/my", s.handlers.Service.ListMyServices)
-	protected.Post("/service/signup", s.handlers.Service.SignupToService)
-	protected.Post("/service/users", s.handlers.Service.ListServiceUsers)
-	protected.Delete("/service/:id", s.handlers.Service.DeleteService)
-	protected.Delete("/service/:id/leave", s.handlers.Service.LeaveService)
+	accountProtected.Post("/service", s.handlers.Service.CreateService)
+	accountProtected.Put("/service/:id", s.handlers.Service.UpdateService)
+	accountProtected.Get("/service/my", s.handlers.Service.ListMyServices)
+	s.app.Post("/service/signup", s.handlers.Service.SignupToService)
+	accountProtected.Post("/service/users", s.handlers.Service.ListServiceUsers)
+	accountProtected.Delete("/service/:id", s.handlers.Service.DeleteService)
+	serviceProtected.Delete("/service/:id/leave", s.handlers.Service.LeaveService)
+	serviceProtected.Get("/service/user", s.handlers.Service.GetServiceUserDetails)
 }
 
 func (s *APIServer) Run() error {

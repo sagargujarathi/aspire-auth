@@ -1,7 +1,6 @@
 package service
 
 import (
-	"aspire-auth/internal/helpers"
 	"aspire-auth/internal/models"
 	"aspire-auth/internal/request"
 	"aspire-auth/internal/response"
@@ -59,11 +58,10 @@ func (h *ServiceHandler) LoginService(c *fiber.Ctx) error {
 		"user_id":    serviceUser.ID.String(),
 		"role_type":  account.RoleType,
 		"service_id": service.ID.String(),
-		"token_type": "SERVICE", // Add token type
 		"expires_at": time.Now().Add(time.Minute * 15).Unix(),
 	}
 
-	accessToken, err := helpers.GenerateAccessToken(claims)
+	accessToken, err := h.Container.JWT.GenerateServiceAccessToken(claims)
 	if err != nil {
 		return c.Status(500).JSON(response.APIResponse{
 			Success: false,
@@ -75,11 +73,10 @@ func (h *ServiceHandler) LoginService(c *fiber.Ctx) error {
 		"user_id":    serviceUser.ID.String(),
 		"role_type":  account.RoleType,
 		"service_id": service.ID.String(),
-		"token_type": "SERVICE", // Add token type
 		"expires_at": time.Now().Add(time.Hour * 24 * 7).Unix(),
 	}
 
-	refreshToken, err := helpers.GenerateRefreshToken(refreshClaims)
+	refreshToken, err := h.Container.JWT.GenerateServiceAccessToken(refreshClaims)
 	if err != nil {
 		return c.Status(500).JSON(response.APIResponse{
 			Success: false,
@@ -89,7 +86,6 @@ func (h *ServiceHandler) LoginService(c *fiber.Ctx) error {
 
 	refreshTokenModel := models.RefreshToken{
 		UserID:       account.ID,
-		TokenType:    "SERVICE",
 		RefreshToken: refreshToken,
 		ServiceID:    &service.ID,
 	}
@@ -104,8 +100,8 @@ func (h *ServiceHandler) LoginService(c *fiber.Ctx) error {
 	return c.Status(200).JSON(response.LoginServiceResponse{
 		Success:      true,
 		Message:      "Service logged in successfully",
-		RefreshToken: refreshToken,
-		AccessToken:  accessToken,
+		RefreshToken: "Bearer " + refreshToken,
+		AccessToken:  "Bearer " + accessToken,
 	})
 
 }

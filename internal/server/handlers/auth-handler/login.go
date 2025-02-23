@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"aspire-auth/internal/helpers"
 	"aspire-auth/internal/models"
 	"aspire-auth/internal/request"
 	"aspire-auth/internal/response"
@@ -51,7 +50,7 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 		"expires_at": time.Now().Add(time.Minute * 15).Unix(),
 	}
 
-	accessToken, err := helpers.GenerateAccessToken(claims)
+	accessToken, err := h.Container.JWT.GenerateAccountAccessToken(claims)
 	if err != nil {
 		return c.Status(500).JSON(response.APIResponse{
 			Success: false,
@@ -66,7 +65,7 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 		"expires_at": time.Now().Add(time.Hour * 24 * 7).Unix(),
 	}
 
-	refreshToken, err := helpers.GenerateRefreshToken(refreshClaims)
+	refreshToken, err := h.Container.JWT.GenerateAccountRefreshToken(refreshClaims)
 	if err != nil {
 		return c.Status(500).JSON(response.APIResponse{
 			Success: false,
@@ -77,7 +76,6 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 	refreshTokenModel := models.RefreshToken{
 		UserID:       account.ID,
 		RefreshToken: refreshToken,
-		TokenType:    "ACCOUNT",
 		ExpiresAt:    time.Now().Add(time.Hour * 24 * 7),
 	}
 

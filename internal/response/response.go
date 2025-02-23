@@ -1,6 +1,7 @@
 package response
 
 import (
+	"aspire-auth/internal/models"
 	"time"
 
 	"github.com/google/uuid"
@@ -38,7 +39,7 @@ type ServiceListResponse struct {
 }
 
 type ServiceUserResponse struct {
-	UserID     string    `json:"user_id"`
+	ID         string    `json:"id"`
 	Username   string    `json:"username"`
 	Email      string    `json:"email"`
 	IsVerified bool      `json:"is_verified"`
@@ -63,4 +64,23 @@ type SignUpServiceResponse struct {
 	Success       bool      `json:"success"`
 	Message       string    `json:"message"`
 	ServiceUserID uuid.UUID `json:"service_user_id"`
+}
+
+type AccountResponse struct {
+	Username    string             `json:"username"`
+	Email       string             `json:"email"`
+	FirstName   string             `json:"first_name"`
+	LastName    string             `json:"last_name"`
+	DateOfBirth *time.Time         `json:"date_of_birth,omitempty"`
+	Gender      *models.GenderType `json:"gender,omitempty"`
+	RoleType    models.RoleType    `json:"role_type"`
+	Avatar      *string            `gorm:"type:text" json:"avatar,omitempty"`
+	CreatedAt   time.Time          `json:"created_at"`
+	UpdatedAt   time.Time          `json:"updated_at"`
+}
+
+type GetAccountDetailsResponse struct {
+	Success bool            `json:"success"`
+	Message string          `json:"message"`
+	Account AccountResponse `json:"account"`
 }
