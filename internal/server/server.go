@@ -104,7 +104,7 @@ func (s *APIServer) InitHandlers() {
 	s.app.Post("/account", s.handlers.Account.CreateAccount)
 	s.app.Post("/verify", s.handlers.Account.VerifyAccount)
 	s.app.Post("/resend-otp", s.handlers.Account.ResendOTP)
-	s.app.Post("/login", s.handlers.Auth.Login)
+	s.app.Post("/signin", s.handlers.Auth.Login)
 	s.app.Post("/refresh-token", s.handlers.Auth.RefreshToken)
 	s.app.Post("/service/login", s.handlers.Service.LoginService)
 	s.app.Post("/service/signup", s.handlers.Service.SignupToService)

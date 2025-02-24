@@ -105,15 +105,19 @@ func (h *AccountHandler) CreateAccount(c *fiber.Ctx) error {
 	if err := helpers.SendVerificationEmail(account.Email, otp, h.Config); err != nil {
 		log.Printf("Email error: %v", err)
 		return c.Status(201).JSON(response.CreateAccountResponse{
-			Success:   true,
-			Message:   "Account created successfully, but email verification failed. Please contact support.",
+			APIResponse: response.APIResponse{
+				Success: true,
+				Message: "Account created successfully, but email verification failed. Please contact support.",
+			},
 			AccountID: account.ID.String(),
 		})
 	}
 
 	return c.Status(201).JSON(response.CreateAccountResponse{
-		Success:   true,
-		Message:   "Account created successfully. Please check your email for verification.",
+		APIResponse: response.APIResponse{
+			Success: true,
+			Message: "Account created successfully. Please check your email for verification.",
+		},
 		AccountID: account.ID.String(),
 	})
 }

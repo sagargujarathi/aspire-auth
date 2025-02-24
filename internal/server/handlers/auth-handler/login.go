@@ -72,9 +72,33 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 			Message: "Error saving refresh token",
 		})
 	}
+	c.Set("Access-Control-Allow-Origin", "*")
+	c.Set("Access-Control-Allow-Credentials", "true")
+
+	c.Cookie(&fiber.Cookie{
+		Name:     "REFRESH_TOKEN",
+		Value:    refreshToken,
+		Expires:  time.Now().Add(time.Hour * 24 * 7),
+		HTTPOnly: true,
+		SameSite: "Strict",
+		Path:     "*",
+	})
+
+	c.Cookie(&fiber.Cookie{
+		Name:     "ACCESS_TOKEN",
+		Value:    accessToken,
+		Expires:  time.Now().Add(time.Hour * 24 * 7),
+		HTTPOnly: true,
+		SameSite: "Strict",
+		Path:     "*",
+	})
 
 	return c.Status(200).JSON(response.LoginResponse{
-		AccessToken:  "Bearer " + accessToken,
-		RefreshToken: "Bearer " + refreshToken,
+		APIResponse: response.APIResponse{
+			Success: true,
+			Message: "Login successful",
+		},
+
+		ExpiresAt: tokenModel.ExpiresAt.Unix(),
 	})
 }

@@ -66,8 +66,10 @@ func (h *ServiceHandler) SignupToService(c *fiber.Ctx) error {
 	}
 
 	return c.Status(200).JSON(response.SignUpServiceResponse{
-		Success:       true,
-		Message:       "Successfully signed up to service",
+		APIResponse: response.APIResponse{
+			Success: true,
+			Message: "Successfully signed up to service",
+		},
 		ServiceUserID: SERVICE_USER_ID,
 	})
 }

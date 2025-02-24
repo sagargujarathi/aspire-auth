@@ -37,8 +37,10 @@ func (h *ServiceHandler) ListMyServices(c *fiber.Ctx) error {
 	}
 
 	return c.Status(200).JSON(response.ServiceListResponse{
-		Success:  true,
-		Message:  "Services fetched successfully",
+		APIResponse: response.APIResponse{
+			Success: true,
+			Message: "Services fetched successfully",
+		},
 		Services: serviceResponses,
 		Total:    total,
 	})

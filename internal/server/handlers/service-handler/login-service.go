@@ -92,10 +92,12 @@ func (h *ServiceHandler) LoginService(c *fiber.Ctx) error {
 	}
 
 	return c.Status(200).JSON(response.LoginServiceResponse{
-		Success:      true,
-		Message:      "Service logged in successfully",
-		RefreshToken: "Bearer " + refreshToken,
-		AccessToken:  "Bearer " + accessToken,
+		APIResponse: response.APIResponse{
+			Success: true,
+			Message: "Service logged in successfully",
+		},
+		RefreshToken: refreshToken,
+		AccessToken:  accessToken,
 	})
 
 }

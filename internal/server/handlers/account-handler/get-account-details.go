@@ -17,8 +17,10 @@ func (h *AccountHandler) GetAccountDetails(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(response.GetAccountDetailsResponse{
-		Success: true,
-		Message: "Account details retrieved successfully",
+		APIResponse: response.APIResponse{
+			Success: true,
+			Message: "Account details retrieved successfully",
+		},
 		Account: response.AccountResponse{
 			Username:    account.Username,
 			Email:       account.Email,

@@ -51,9 +51,11 @@ func (h *ServiceHandler) ListServiceUsers(c *fiber.Ctx) error {
 	}
 
 	return c.Status(200).JSON(response.ServiceUsersListResponse{
-		Success: true,
-		Message: "Service users fetched successfully",
-		Users:   userResponses,
-		Total:   total,
+		APIResponse: response.APIResponse{
+			Success: true,
+			Message: "Service users fetched successfully",
+		},
+		Users: userResponses,
+		Total: total,
 	})
 }

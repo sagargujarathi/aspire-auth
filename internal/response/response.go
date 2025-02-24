@@ -13,17 +13,17 @@ type APIResponse struct {
 }
 
 type LoginResponse struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
+	APIResponse
+	ExpiresAt int64 `json:"expires_at"`
 }
 
 type CreateAccountResponse struct {
-	Success   bool   `json:"success"`
-	Message   string `json:"message"`
+	APIResponse
 	AccountID string `json:"account_id"`
 }
 
 type ServiceResponse struct {
+	APIResponse
 	ID          string  `json:"id"`
 	Name        string  `json:"name"`
 	Description *string `json:"description,omitempty"`
@@ -32,13 +32,13 @@ type ServiceResponse struct {
 }
 
 type ServiceListResponse struct {
-	Success  bool              `json:"success"`
-	Message  string            `json:"message"`
+	APIResponse
 	Services []ServiceResponse `json:"services"`
 	Total    int64             `json:"total"`
 }
 
 type ServiceUserResponse struct {
+	APIResponse
 	ID         string    `json:"id"`
 	Username   string    `json:"username"`
 	Email      string    `json:"email"`
@@ -47,22 +47,19 @@ type ServiceUserResponse struct {
 }
 
 type ServiceUsersListResponse struct {
-	Success bool                  `json:"success"`
-	Message string                `json:"message"`
-	Users   []ServiceUserResponse `json:"users"`
-	Total   int64                 `json:"total"`
+	APIResponse
+	Users []ServiceUserResponse `json:"users"`
+	Total int64                 `json:"total"`
 }
 
 type LoginServiceResponse struct {
-	Success      bool   `json:"success"`
-	Message      string `json:"message"`
+	APIResponse
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
 }
 
 type SignUpServiceResponse struct {
-	Success       bool      `json:"success"`
-	Message       string    `json:"message"`
+	APIResponse
 	ServiceUserID uuid.UUID `json:"service_user_id"`
 }
 
@@ -80,7 +77,6 @@ type AccountResponse struct {
 }
 
 type GetAccountDetailsResponse struct {
-	Success bool            `json:"success"`
-	Message string          `json:"message"`
+	APIResponse
 	Account AccountResponse `json:"account"`
 }

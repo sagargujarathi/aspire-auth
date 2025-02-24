@@ -27,8 +27,10 @@ func (h *ServiceHandler) GetServiceUserDetails(context *fiber.Ctx) error {
 	}
 
 	return context.Status(200).JSON(response.GetAccountDetailsResponse{
-		Success: true,
-		Message: "Service user fetched successfully",
+		APIResponse: response.APIResponse{
+			Success: true,
+			Message: "Service user fetched successfully",
+		},
 		Account: response.AccountResponse{
 			Username:    account.Username,
 			Email:       account.Email,

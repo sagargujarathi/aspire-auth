@@ -88,8 +88,21 @@ func (h *AuthHandler) RefreshToken(c *fiber.Ctx) error {
 		})
 	}
 
-	return c.Status(200).JSON(response.LoginResponse{
-		AccessToken:  "Bearer " + newAccessToken,
-		RefreshToken: "Bearer " + newRefreshToken,
+	c.Cookie(&fiber.Cookie{
+		Name:     "REFRESH_TOKEN",
+		Value:    newRefreshToken,
+		Expires:  time.Now().Add(time.Hour * 24 * 7),
+		HTTPOnly: true,
+		SameSite: "Strict",
 	})
+
+	c.Cookie(&fiber.Cookie{
+		Name:     "ACCESS_TOKEN",
+		Value:    newAccessToken,
+		Expires:  time.Now().Add(time.Hour * 24 * 7),
+		HTTPOnly: true,
+		SameSite: "Strict",
+	})
+
+	return c.Status(200).JSON(response.LoginResponse{})
 }
