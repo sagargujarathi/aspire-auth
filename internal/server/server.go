@@ -86,11 +86,12 @@ func initFiber(cfg *config.Config) *fiber.App {
 		JSONEncoder:  json.Marshal,
 	})
 
-	// Add CORS middleware
 	app.Use(cors.New(cors.Config{
-		AllowOrigins: "*",
-		AllowHeaders: "Origin, Content-Type, Accept, Authorization",
-		AllowMethods: "GET, POST, PUT, DELETE",
+		AllowOrigins:     "http://localhost:3000/",
+		AllowMethods:     "GET,POST,PUT,DELETE,OPTIONS",
+		AllowHeaders:     "Origin, Content-Type, Accept, Authorization",
+		AllowCredentials: true,
+		MaxAge:           300,
 	}))
 
 	// Add JSON content type middleware

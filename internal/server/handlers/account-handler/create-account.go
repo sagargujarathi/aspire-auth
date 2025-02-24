@@ -47,7 +47,7 @@ func (h *AccountHandler) CreateAccount(c *fiber.Ctx) error {
 
 	var dateOfBirth *time.Time
 	if req.DateOfBirth != "" {
-		parsedDate, err := time.Parse("02-01-2006", req.DateOfBirth)
+		parsedDate, err := time.Parse("2006-01-02", req.DateOfBirth)
 		if err != nil {
 			return c.Status(400).JSON(response.APIResponse{
 				Success: false,
@@ -63,9 +63,18 @@ func (h *AccountHandler) CreateAccount(c *fiber.Ctx) error {
 		gender = &g
 	}
 
-	var avatar *string
-	if req.Avatar != "" {
-		avatar = &req.Avatar
+	// Handle file upload
+	var avatarFilename *string
+	if req.Avatar != nil {
+		filename, err := helpers.SaveFile(req.Avatar, "images/avatars")
+		if err != nil {
+			log.Printf("Error saving avatar: %v", err)
+			return c.Status(500).JSON(response.APIResponse{
+				Success: false,
+				Message: "Error saving avatar",
+			})
+		}
+		avatarFilename = &filename
 	}
 
 	account := models.Account{
@@ -76,7 +85,7 @@ func (h *AccountHandler) CreateAccount(c *fiber.Ctx) error {
 		LastName:       req.LastName,
 		DateOfBirth:    dateOfBirth,
 		Gender:         gender,
-		Avatar:         avatar,
+		Avatar:         avatarFilename,
 		RoleType:       models.RoleUser,
 	}
 

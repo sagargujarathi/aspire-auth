@@ -72,25 +72,35 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 			Message: "Error saving refresh token",
 		})
 	}
-	c.Set("Access-Control-Allow-Origin", "*")
+
+	// Update CORS headers
+	origin := c.Get("Origin")
+	c.Set("Access-Control-Allow-Origin", origin)
 	c.Set("Access-Control-Allow-Credentials", "true")
 
+	// Set cookies with correct settings for persistence
 	c.Cookie(&fiber.Cookie{
 		Name:     "REFRESH_TOKEN",
 		Value:    refreshToken,
-		Expires:  time.Now().Add(time.Hour * 24 * 7),
-		HTTPOnly: true,
-		SameSite: "Strict",
-		Path:     "*",
+		Path:     "/",
+		Expires:  time.Now().Add(h.Config.JWT.Account.RefreshExpiry),
+		MaxAge:   int(h.Config.JWT.Account.RefreshExpiry.Seconds()),
+		Domain:   "localhost",
+		Secure:   true,
+		HTTPOnly: false,
+		SameSite: "None",
 	})
 
 	c.Cookie(&fiber.Cookie{
 		Name:     "ACCESS_TOKEN",
 		Value:    accessToken,
-		Expires:  time.Now().Add(time.Hour * 24 * 7),
-		HTTPOnly: true,
-		SameSite: "Strict",
-		Path:     "*",
+		Path:     "/",
+		Expires:  time.Now().Add(h.Config.JWT.Account.AccessExpiry),
+		MaxAge:   int(h.Config.JWT.Account.AccessExpiry.Seconds()),
+		Domain:   "localhost",
+		Secure:   true,
+		HTTPOnly: false,
+		SameSite: "None",
 	})
 
 	return c.Status(200).JSON(response.LoginResponse{
