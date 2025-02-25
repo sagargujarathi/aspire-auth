@@ -1,19 +1,18 @@
 package request
 
 import (
-	"mime/multipart"
 	"time"
 )
 
 type CreateAccountRequest struct {
-	Username    string                `json:"username" validate:"required,min=3,max=50"`
-	Email       string                `json:"email" validate:"required,email"`
-	Password    string                `json:"password" validate:"required,min=8"`
-	FirstName   string                `json:"first_name" validate:"required"`
-	LastName    string                `json:"last_name" validate:"required"`
-	DateOfBirth string                `json:"date_of_birth,omitempty"`
-	Gender      string                `json:"gender,omitempty"`
-	Avatar      *multipart.FileHeader `json:"avatar,omitempty"`
+	Username    string `json:"username" validate:"required,min=3,max=50"`
+	Email       string `json:"email" validate:"required,email"`
+	Password    string `json:"password" validate:"required,min=8"`
+	FirstName   string `json:"first_name" validate:"required"`
+	LastName    string `json:"last_name" validate:"required"`
+	DateOfBirth string `json:"date_of_birth,omitempty"`
+	Gender      string `json:"gender,omitempty"`
+	Avatar      string `json:"avatar,omitempty"`
 }
 
 type UpdateAccountRequest struct {

@@ -15,6 +15,13 @@ import (
 )
 
 func (h *AccountHandler) CreateAccount(c *fiber.Ctx) error {
+	tx := h.DB.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
 	var req request.CreateAccountRequest
 
 	if err := c.BodyParser(&req); err != nil {
@@ -63,11 +70,14 @@ func (h *AccountHandler) CreateAccount(c *fiber.Ctx) error {
 		gender = &g
 	}
 
-	// Handle file upload
 	var avatarFilename *string
-	if req.Avatar != nil {
-		filename, err := helpers.SaveFile(req.Avatar, "images/avatars")
+	var avatarPath string
+
+	// Handle avatar base64
+	if req.Avatar != "" {
+		filename, err := helpers.SaveBase64File(req.Avatar, "images/avatars", ".png")
 		if err != nil {
+			tx.Rollback()
 			log.Printf("Error saving avatar: %v", err)
 			return c.Status(500).JSON(response.APIResponse{
 				Success: false,
@@ -75,6 +85,15 @@ func (h *AccountHandler) CreateAccount(c *fiber.Ctx) error {
 			})
 		}
 		avatarFilename = &filename
+		avatarPath = fmt.Sprintf("images/avatars/%s", filename)
+
+		defer func() {
+			if tx.Error != nil {
+				if err := helpers.DeleteFile(avatarPath); err != nil {
+					log.Printf("Failed to delete avatar file after error: %v", err)
+				}
+			}
+		}()
 	}
 
 	account := models.Account{
@@ -89,7 +108,8 @@ func (h *AccountHandler) CreateAccount(c *fiber.Ctx) error {
 		RoleType:       models.RoleUser,
 	}
 
-	if err := h.DB.Create(&account).Error; err != nil {
+	if err := tx.Create(&account).Error; err != nil {
+		tx.Rollback()
 		log.Printf("Database error: %v", err)
 		return c.Status(500).JSON(response.APIResponse{
 			Success: false,
@@ -103,6 +123,7 @@ func (h *AccountHandler) CreateAccount(c *fiber.Ctx) error {
 	// Store OTP in Redis
 	err = h.Redis.Set(c.Context(), fmt.Sprintf("otp:%s", account.ID.String()), otp, 15*time.Minute).Err()
 	if err != nil {
+		tx.Rollback()
 		log.Printf("Redis error: %v", err)
 		return c.Status(500).JSON(response.APIResponse{
 			Success: false,
@@ -112,13 +133,21 @@ func (h *AccountHandler) CreateAccount(c *fiber.Ctx) error {
 
 	// Send verification email
 	if err := helpers.SendVerificationEmail(account.Email, otp, h.Config); err != nil {
+		tx.Rollback()
 		log.Printf("Email error: %v", err)
-		return c.Status(201).JSON(response.CreateAccountResponse{
-			APIResponse: response.APIResponse{
-				Success: true,
-				Message: "Account created successfully, but email verification failed. Please contact support.",
-			},
-			AccountID: account.ID.String(),
+		return c.Status(500).JSON(response.APIResponse{
+			Success: false,
+			Message: "Error sending verification email. Please try again.",
+		})
+	}
+
+	// Commit the transaction
+	if err := tx.Commit().Error; err != nil {
+		tx.Rollback()
+		log.Printf("Transaction commit error: %v", err)
+		return c.Status(500).JSON(response.APIResponse{
+			Success: false,
+			Message: "Error completing account creation. Please try again.",
 		})
 	}
 

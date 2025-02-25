@@ -6,6 +6,7 @@ import (
 	"aspire-auth/internal/helpers"
 	"aspire-auth/internal/middleware"
 	"aspire-auth/internal/server/handlers"
+	"aspire-auth/internal/server/handlers/static-handler"
 	"context"
 	"encoding/json"
 	"log"
@@ -23,6 +24,7 @@ type APIServer struct {
 	app        *fiber.App
 	handlers   *handlers.Handlers
 	middleware *middleware.Middleware
+	static     *static.StaticHandler
 }
 
 func NewAPIServer() *APIServer {
@@ -35,6 +37,7 @@ func NewAPIServer() *APIServer {
 	jwtHelpers := helpers.InitJWTHelpers(cfg)
 	container := container.NewContainer(cfg, db, redis, app, jwtHelpers)
 	middleWare := middleware.InitMiddleware(container)
+	static := static.NewStaticHandler(container)
 
 	h := handlers.InitHandlers(container)
 
@@ -43,6 +46,7 @@ func NewAPIServer() *APIServer {
 		app:        app,
 		handlers:   h,
 		middleware: middleWare,
+		static:     static,
 	}
 }
 
@@ -102,6 +106,7 @@ func initFiber(cfg *config.Config) *fiber.App {
 
 func (s *APIServer) InitHandlers() {
 	// Public routes
+	s.app.Get("/images/:directory/:filename", s.static.ServeImage)
 	s.app.Post("/account", s.handlers.Account.CreateAccount)
 	s.app.Post("/verify", s.handlers.Account.VerifyAccount)
 	s.app.Post("/resend-otp", s.handlers.Account.ResendOTP)
@@ -128,6 +133,7 @@ func (s *APIServer) InitHandlers() {
 	serviceUserGroup := s.app.Group("/service-user", s.middleware.ServiceAuthMiddleware)
 	serviceUserGroup.Delete("/:id/leave", s.handlers.Service.LeaveService)
 	serviceUserGroup.Get("/details", s.handlers.Service.GetServiceUserDetails)
+
 }
 
 func (s *APIServer) Run() error {
