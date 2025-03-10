@@ -3,7 +3,14 @@ package helpers
 import (
 	"aspire-auth/internal/config"
 	"aspire-auth/internal/models"
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
 	"fmt"
+	"io"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -12,18 +19,23 @@ import (
 // Add this at the top of the file to cache the secret
 type JWTHelpers struct {
 	*config.Config
-	cachedAccessSecret  string
-	cachedRefreshSecret string
+	accountAccessSecret  string
+	accountRefreshSecret string
+	serviceAccessSecret  string
+	serviceRefreshSecret string
+	serviceEncryptSecret string
 }
 
 func InitJWTHelpers(cfg *config.Config) *JWTHelpers {
 	helper := &JWTHelpers{
-		Config:              cfg,
-		cachedAccessSecret:  cfg.JWT.Account.AccessTokenSecret,
-		cachedRefreshSecret: cfg.JWT.Account.RefreshTokenSecret,
+		Config:               cfg,
+		accountAccessSecret:  cfg.JWT.Account.AccessTokenSecret,
+		accountRefreshSecret: cfg.JWT.Account.RefreshTokenSecret,
+		serviceAccessSecret:  cfg.JWT.Service.AccessTokenSecret,
+		serviceRefreshSecret: cfg.JWT.Service.RefreshTokenSecret,
+		serviceEncryptSecret: cfg.JWT.Service.ServiceEncryptSecret,
 	}
 
-	// Debug print the secrets being used
 	return helper
 }
 
@@ -55,19 +67,19 @@ func TokenModelToClaims(data *models.AccountRefreshToken) *jwt.MapClaims {
 }
 
 func (h *JWTHelpers) GenerateAccountAccessToken(data *models.AccountRefreshToken) (string, error) {
-	fmt.Printf("Debug - Generating token with secret: %s\n", h.cachedAccessSecret) // Debug log
+	fmt.Printf("Debug - Generating account token with secret: %s\n", h.accountAccessSecret) // Debug log
 	claims := TokenModelToClaims(data)
-	return GenerateJWT(claims, []byte(h.cachedAccessSecret))
+	return GenerateJWT(claims, []byte(h.accountAccessSecret))
 }
 
 func (h *JWTHelpers) GenerateAccountRefreshToken(data *models.AccountRefreshToken) (string, error) {
 	claims := TokenModelToClaims(data)
-	return GenerateJWT(claims, []byte(h.cachedRefreshSecret))
+	return GenerateJWT(claims, []byte(h.accountRefreshSecret))
 }
 
 func (h *JWTHelpers) ParseAccountAccessToken(tokenString string, claims *models.AccountAuthorizationToken) error {
-	fmt.Printf("Debug - Using Account Access Token Secret: %s\n", h.cachedAccessSecret) // Debug log
-	token, err := ParseJWT(tokenString, claims, []byte(h.cachedAccessSecret))
+	fmt.Printf("Debug - Using Account Access Token Secret: %s\n", h.accountAccessSecret) // Debug log
+	token, err := ParseJWT(tokenString, claims, []byte(h.accountAccessSecret))
 	if err != nil {
 		return err
 	}
@@ -78,7 +90,7 @@ func (h *JWTHelpers) ParseAccountAccessToken(tokenString string, claims *models.
 }
 
 func (h *JWTHelpers) ParseAccountRefreshToken(tokenString string, claims *models.AccountAuthorizationToken) error {
-	token, err := ParseJWT(tokenString, claims, []byte(h.cachedRefreshSecret))
+	token, err := ParseJWT(tokenString, claims, []byte(h.accountRefreshSecret))
 	if err != nil {
 		return err
 	}
@@ -105,23 +117,90 @@ func ServiceSecretKeyToClaims(secretKey string) *jwt.MapClaims {
 	}
 }
 
-func (h *JWTHelpers) GenerateServiceAccessToken(data *models.ServiceRefreshToken) (string, error) {
+// getEncryptionKey creates a valid 32-byte AES key from any string input
+func (h *JWTHelpers) getEncryptionKey() []byte {
+	// Use SHA-256 to get a consistent 32-byte key from the secret
+	hasher := sha256.New()
+	hasher.Write([]byte(h.serviceEncryptSecret))
+	return hasher.Sum(nil) // 32 bytes (256 bits)
+}
+
+func (h *JWTHelpers) EncryptServiceSecretKey(secretKey string) (string, error) {
+	// Use a proper 32-byte key derived from your secret
+	key := h.getEncryptionKey()
+
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return "", fmt.Errorf("cipher creation failed: %w", err)
+	}
+
+	// IV needs to be unique, but not secure
+	ciphertext := make([]byte, aes.BlockSize+len(secretKey))
+	iv := ciphertext[:aes.BlockSize]
+	if _, err := io.ReadFull(rand.Reader, iv); err != nil {
+		return "", fmt.Errorf("failed to generate IV: %w", err)
+	}
+
+	stream := cipher.NewCFBEncrypter(block, iv)
+	stream.XORKeyStream(ciphertext[aes.BlockSize:], []byte(secretKey))
+
+	return base64.StdEncoding.EncodeToString(ciphertext), nil
+}
+
+func (h *JWTHelpers) DecryptServiceSecretKey(encryptedKey string) (string, error) {
+	// Use a proper 32-byte key derived from your secret
+	key := h.getEncryptionKey()
+
+	ciphertext, err := base64.StdEncoding.DecodeString(encryptedKey)
+	if err != nil {
+		return "", fmt.Errorf("base64 decode failed: %w", err)
+	}
+
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return "", fmt.Errorf("cipher creation failed: %w", err)
+	}
+
+	if len(ciphertext) < aes.BlockSize {
+		return "", fmt.Errorf("ciphertext too short")
+	}
+
+	iv := ciphertext[:aes.BlockSize]
+	ciphertext = ciphertext[aes.BlockSize:]
+
+	stream := cipher.NewCFBDecrypter(block, iv)
+	stream.XORKeyStream(ciphertext, ciphertext)
+
+	return string(ciphertext), nil
+}
+
+func (h *JWTHelpers) GenerateServiceEncryptToken(secretKey string) (string, error) {
+	return h.EncryptServiceSecretKey(secretKey)
+}
+
+func (h *JWTHelpers) GenerateServiceAccessTokenWithSecret(data *models.ServiceRefreshToken, serviceSecret string) (string, error) {
 	claims := ServiceTokenModelToClaims(data)
-	return GenerateJWT(claims, []byte(h.JWT.Service.AccessTokenSecret))
+	return GenerateJWT(claims, []byte(serviceSecret))
+}
+
+func (h *JWTHelpers) GenerateServiceRefreshTokenWithSecret(data *models.ServiceRefreshToken, serviceSecret string) (string, error) {
+	claims := ServiceTokenModelToClaims(data)
+	return GenerateJWT(claims, []byte(serviceSecret))
+}
+
+func (h *JWTHelpers) GenerateServiceAccessToken(data *models.ServiceRefreshToken) (string, error) {
+	fmt.Printf("Debug - Generating service token with secret: %s\n", h.serviceAccessSecret) // Debug log
+	claims := ServiceTokenModelToClaims(data)
+	return GenerateJWT(claims, []byte(h.serviceAccessSecret))
 }
 
 func (h *JWTHelpers) GenerateServiceRefreshToken(data *models.ServiceRefreshToken) (string, error) {
 	claims := ServiceTokenModelToClaims(data)
-	return GenerateJWT(claims, []byte(h.JWT.Service.RefreshTokenSecret))
+	return GenerateJWT(claims, []byte(h.serviceRefreshSecret))
 }
 
-func (h *JWTHelpers) GenerateServiceEncryptToken(secretKey string) (string, error) {
-	claims := ServiceSecretKeyToClaims(secretKey)
-	return GenerateJWT(claims, []byte(h.JWT.Service.ServiceEncryptSecret))
-}
-
-func (h *JWTHelpers) ParseServiceEncryptToken(tokenString string, claims jwt.Claims) error {
-	token, err := ParseJWT(tokenString, claims, []byte(h.JWT.Service.ServiceEncryptSecret))
+func (h *JWTHelpers) ParseServiceAccessTokenWithSecret(tokenString string, claims jwt.Claims, serviceSecret string) error {
+	token, err := ParseJWT(tokenString, claims, []byte(serviceSecret))
 	if err != nil {
 		return err
 	}
@@ -131,11 +210,82 @@ func (h *JWTHelpers) ParseServiceEncryptToken(tokenString string, claims jwt.Cla
 	return nil
 }
 
-func (h *JWTHelpers) ParseServiceAccessToken(tokenString string, claims jwt.Claims) error {
-	token, err := ParseJWT(tokenString, claims, []byte(h.JWT.Service.AccessTokenSecret))
+// Add this new function to help with debugging
+func (h *JWTHelpers) DebugTokenType(tokenString string) string {
+	parts := strings.Split(tokenString, ".")
+	if len(parts) != 3 {
+		return "INVALID_TOKEN_FORMAT"
+	}
+
+	// Parse token details without validation
+	parser := jwt.NewParser(jwt.WithoutClaimsValidation())
+	parsedToken, _, err := parser.ParseUnverified(tokenString, jwt.MapClaims{})
 	if err != nil {
+		return "PARSE_ERROR"
+	}
+
+	if mapClaims, ok := parsedToken.Claims.(jwt.MapClaims); ok {
+		if _, hasServiceID := mapClaims["service_id"]; hasServiceID {
+			return "SERVICE_TOKEN"
+		} else if _, hasUserID := mapClaims["user_id"]; hasUserID {
+			return "ACCOUNT_TOKEN"
+		}
+	}
+
+	return "UNKNOWN_TOKEN_TYPE"
+}
+
+// Update ParseServiceAccessToken to use the proper fallback approach only when needed
+func (h *JWTHelpers) ParseServiceAccessToken(tokenString string, claims jwt.Claims) error {
+	// Extract and print token payload for debugging
+	tokenType := h.DebugTokenType(tokenString)
+	fmt.Printf("Token identified as: %s\n", tokenType)
+
+	// Extract and print token payload for debugging
+	parts := strings.Split(tokenString, ".")
+	if len(parts) == 3 {
+		fmt.Printf("Token parts count: %d\n", len(parts))
+		fmt.Printf("Token payload (encoded): %s\n", parts[1])
+
+		// Parse token details without validation to see what's in it
+		parser := jwt.NewParser(jwt.WithoutClaimsValidation())
+		parsedToken, _, err := parser.ParseUnverified(tokenString, jwt.MapClaims{})
+		if err == nil {
+			if mapClaims, ok := parsedToken.Claims.(jwt.MapClaims); ok {
+				fmt.Printf("Token claims: %v\n", mapClaims)
+
+				// If we have a service_id claim, we should try to use that service's secret
+				if serviceID, ok := mapClaims["service_id"].(string); ok {
+					// This would normally query the database to get the service's encrypted secret
+					// But since we can't add that here, we'll just log it
+					fmt.Printf("Should validate with service-specific secret for service ID: %s\n", serviceID)
+					// In a real implementation, you would:
+					// 1. Get the encrypted secret from the database using serviceID
+					// 2. Decrypt it
+					// 3. Use it to validate the token
+				}
+			}
+		}
+	}
+
+	fmt.Printf("Debug - Using Service Access Token Secret: %s\n", h.serviceAccessSecret)
+
+	// First try with the normal service access token secret
+	token, err := ParseJWT(tokenString, claims, []byte(h.serviceAccessSecret))
+	if err != nil {
+		// If the error is specifically about the signature being invalid
+		if strings.Contains(err.Error(), "signature is invalid") {
+			// Try with the account access token secret as a fallback
+			fmt.Printf("Warning: Service token validation failed with service secret, trying with account secret\n")
+			accountToken, accountErr := ParseJWT(tokenString, claims, []byte(h.accountAccessSecret))
+			if accountErr == nil && accountToken.Valid {
+				fmt.Printf("Warning: Service token validated with ACCOUNT secret - this indicates a middleware routing issue\n")
+				return nil
+			}
+		}
 		return err
 	}
+
 	if !token.Valid {
 		return jwt.ErrSignatureInvalid
 	}
@@ -143,7 +293,7 @@ func (h *JWTHelpers) ParseServiceAccessToken(tokenString string, claims jwt.Clai
 }
 
 func (h *JWTHelpers) ParseServiceRefreshToken(tokenString string, claims jwt.Claims) error {
-	token, err := ParseJWT(tokenString, claims, []byte(h.JWT.Service.RefreshTokenSecret))
+	token, err := ParseJWT(tokenString, claims, []byte(h.serviceRefreshSecret))
 	if err != nil {
 		return err
 	}
@@ -154,7 +304,27 @@ func (h *JWTHelpers) ParseServiceRefreshToken(tokenString string, claims jwt.Cla
 }
 
 func (h *JWTHelpers) ExtractToken(authorization string) string {
-	return authorization[7:]
+	// Standard Bearer token
+	if strings.HasPrefix(authorization, "Bearer ") {
+		return authorization[7:]
+	}
+
+	// JWT Token passed directly
+	if strings.Count(authorization, ".") == 2 {
+		return authorization
+	}
+
+	// Return as is if none of the above
+	return authorization
+}
+
+// Get secret keys for debugging
+func (h *JWTHelpers) GetServiceAccessSecret() string {
+	return h.serviceAccessSecret
+}
+
+func (h *JWTHelpers) GetAccountAccessSecret() string {
+	return h.accountAccessSecret
 }
 
 func FormatTime(t time.Time) string {

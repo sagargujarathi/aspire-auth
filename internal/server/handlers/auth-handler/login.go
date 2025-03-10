@@ -45,7 +45,7 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 	tokenModel := models.AccountRefreshToken{
 		UserID:    account.ID,
 		RoleType:  account.RoleType,
-		ExpiresAt: time.Now().Add(time.Hour * 24 * 7),
+		ExpiresAt: time.Now().Add(h.Config.JWT.Account.RefreshExpiry),
 	}
 
 	accessToken, err := h.Container.JWT.GenerateAccountAccessToken(&tokenModel)
@@ -75,6 +75,9 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 
 	// Update CORS headers
 	origin := c.Get("Origin")
+	if origin == "" {
+		origin = "*" // Default to wildcard if no origin is provided
+	}
 	c.Set("Access-Control-Allow-Origin", origin)
 	c.Set("Access-Control-Allow-Credentials", "true")
 
@@ -85,9 +88,9 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 		Path:     "/",
 		Expires:  time.Now().Add(h.Config.JWT.Account.RefreshExpiry),
 		MaxAge:   int(h.Config.JWT.Account.RefreshExpiry.Seconds()),
-		Domain:   "localhost",
+		Domain:   "", // Let browser set the domain automatically
 		Secure:   true,
-		HTTPOnly: false,
+		HTTPOnly: true,
 		SameSite: "None",
 	})
 
@@ -97,9 +100,9 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 		Path:     "/",
 		Expires:  time.Now().Add(h.Config.JWT.Account.AccessExpiry),
 		MaxAge:   int(h.Config.JWT.Account.AccessExpiry.Seconds()),
-		Domain:   "localhost",
-		Secure:   true,
-		HTTPOnly: false,
+		Domain:   "", // Let browser set the domain automatically
+		Secure:   false,
+		HTTPOnly: false, // Set to false to allow JavaScript access
 		SameSite: "None",
 	})
 

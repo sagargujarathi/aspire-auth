@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS SERVICES (
     owner_id UUID REFERENCES ACCOUNTS(id) ON DELETE CASCADE,
     service_name TEXT UNIQUE NOT NULL,
     service_logo TEXT,
+    secret_key TEXT NOT NULL, -- Added column for storing encrypted service secret
     service_description TEXT,
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,

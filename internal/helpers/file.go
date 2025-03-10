@@ -80,10 +80,8 @@ func DeleteFile(filepath string) error {
 }
 
 func IsValidImagePath(directory, filename string) bool {
-	// Validate directory (only allow specific directories)
 	allowedDirs := map[string]bool{
 		"avatars": true,
-		// Add other allowed directories here
 	}
 
 	if !allowedDirs[directory] {
@@ -91,13 +89,11 @@ func IsValidImagePath(directory, filename string) bool {
 		return false
 	}
 
-	// Validate filename (prevent directory traversal)
 	if strings.Contains(filename, "/") || strings.Contains(filename, "\\") {
 		log.Printf("Invalid filename (contains path separators): %s", filename)
 		return false
 	}
 
-	// Validate file extension
 	ext := strings.ToLower(filepath.Ext(filename))
 	allowedExts := map[string]bool{
 		".jpg":  true,

@@ -3,7 +3,7 @@ package service
 import (
 	"aspire-auth/internal/models"
 	"aspire-auth/internal/request"
-	"aspire-auth/internal/response"
+	"aspire-auth/internal/utils"
 	"log"
 
 	"github.com/gofiber/fiber/v2"
@@ -13,10 +13,7 @@ import (
 func (h *ServiceHandler) CreateService(c *fiber.Ctx) error {
 	var req request.CreateServiceRequest
 	if err := c.BodyParser(&req); err != nil {
-		return c.Status(400).JSON(response.APIResponse{
-			Success: false,
-			Message: "Invalid request format",
-		})
+		return utils.SendError(c, fiber.StatusBadRequest, "Invalid request format")
 	}
 
 	// Get owner's ID from auth token
@@ -24,20 +21,19 @@ func (h *ServiceHandler) CreateService(c *fiber.Ctx) error {
 
 	ownerID, err := uuid.Parse(authToken.UserID)
 	if err != nil {
-		return c.Status(400).JSON(response.APIResponse{
-			Success: false,
-			Message: "Invalid user ID",
-		})
+		return utils.SendError(c, fiber.StatusBadRequest, "Invalid user ID")
 	}
 
-	SECRET_TOKEN, err := h.Container.JWT.GenerateServiceEncryptToken(req.SecretKey)
+	// Validate the secret key - ensure it's at least 16 characters for security
+	if len(req.SecretKey) < 16 {
+		return utils.SendError(c, fiber.StatusBadRequest, "Service secret key must be at least 16 characters")
+	}
 
+	// Encrypt the service secret
+	encryptedSecret, err := h.Container.JWT.EncryptServiceSecretKey(req.SecretKey)
 	if err != nil {
-		log.Printf("Error generating service secret key: %v", err)
-		return c.Status(500).JSON(response.APIResponse{
-			Success: false,
-			Message: "Error generating service secret key",
-		})
+		log.Printf("Error encrypting service secret key: %v", err)
+		return utils.SendError(c, fiber.StatusInternalServerError, "Error processing service secret key")
 	}
 
 	service := models.Service{
@@ -45,18 +41,16 @@ func (h *ServiceHandler) CreateService(c *fiber.Ctx) error {
 		ServiceName:        req.ServiceName,
 		ServiceDescription: req.ServiceDescription,
 		ServiceLogo:        req.ServiceLogo,
-		SecretKey:          SECRET_TOKEN,
+		SecretKey:          encryptedSecret,
 	}
 
 	if err := h.DB.Create(&service).Error; err != nil {
 		log.Printf("Error creating service: %v", err)
-		return c.Status(500).JSON(response.APIResponse{
-			Success: false,
-			Message: "Error creating service",
-		})
+		return utils.SendError(c, fiber.StatusInternalServerError, "Error creating service")
 	}
 
-	return c.Status(201).JSON(fiber.Map{
+	// Return success but never return the secret key in the response
+	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
 		"success":    true,
 		"message":    "Service created successfully",
 		"service_id": service.ID,

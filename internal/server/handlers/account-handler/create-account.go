@@ -14,6 +14,17 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// CreateAccount godoc
+// @Summary Create a new user account
+// @Description Creates a new user account and sends verification email
+// @Tags accounts
+// @Accept json
+// @Produce json
+// @Param account body request.CreateAccountRequest true "Account information"
+// @Success 201 {object} response.CreateAccountResponse
+// @Failure 400 {object} response.APIResponse
+// @Failure 500 {object} response.APIResponse
+// @Router /account [post]
 func (h *AccountHandler) CreateAccount(c *fiber.Ctx) error {
 	tx := h.DB.Begin()
 	defer func() {
@@ -58,7 +69,7 @@ func (h *AccountHandler) CreateAccount(c *fiber.Ctx) error {
 		if err != nil {
 			return c.Status(400).JSON(response.APIResponse{
 				Success: false,
-				Message: "Invalid date format. Use DD-MM-YYYY",
+				Message: "Invalid date format. Use YYYY-MM-DD",
 			})
 		}
 		dateOfBirth = &parsedDate
@@ -74,26 +85,28 @@ func (h *AccountHandler) CreateAccount(c *fiber.Ctx) error {
 	var avatarPath string
 
 	// Handle avatar base64
-	if req.Avatar != "" {
-		filename, err := helpers.SaveBase64File(req.Avatar, "images/avatars", ".png")
-		if err != nil {
-			tx.Rollback()
-			log.Printf("Error saving avatar: %v", err)
-			return c.Status(500).JSON(response.APIResponse{
-				Success: false,
-				Message: "Error saving avatar",
-			})
-		}
-		avatarFilename = &filename
-		avatarPath = fmt.Sprintf("images/avatars/%s", filename)
-
-		defer func() {
-			if tx.Error != nil {
-				if err := helpers.DeleteFile(avatarPath); err != nil {
-					log.Printf("Failed to delete avatar file after error: %v", err)
-				}
+	if c.Get("Avatar") != "" { // Check if Avatar key exists in the request
+		if req.Avatar != "" { // Check if Avatar value is not empty
+			filename, err := helpers.SaveBase64File(req.Avatar, "images/avatars", ".png")
+			if err != nil {
+				tx.Rollback()
+				log.Printf("Error saving avatar: %v", err)
+				return c.Status(500).JSON(response.APIResponse{
+					Success: false,
+					Message: "Error saving avatar",
+				})
 			}
-		}()
+			avatarFilename = &filename
+			avatarPath = fmt.Sprintf("images/avatars/%s", filename)
+
+			defer func() {
+				if tx.Error != nil {
+					if err := helpers.DeleteFile(avatarPath); err != nil {
+						log.Printf("Failed to delete avatar file after error: %v", err)
+					}
+				}
+			}()
+		}
 	}
 
 	account := models.Account{

@@ -13,10 +13,12 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	// Remove Swagger imports for now
+	// _ "aspire-auth/docs"
+	// swagger "github.com/swaggo/fiber-swagger"
 )
 
 type APIServer struct {
@@ -88,15 +90,21 @@ func initFiber(cfg *config.Config) *fiber.App {
 		WriteTimeout: cfg.Server.WriteTimeout,
 		JSONDecoder:  json.Unmarshal,
 		JSONEncoder:  json.Marshal,
+		ErrorHandler: func(c *fiber.Ctx, err error) error {
+			log.Printf("Fiber error handler: %v", err)
+			code := fiber.StatusInternalServerError
+			if e, ok := err.(*fiber.Error); ok {
+				code = e.Code
+			}
+			return c.Status(code).JSON(fiber.Map{
+				"success": false,
+				"message": err.Error(),
+			})
+		},
 	})
 
-	app.Use(cors.New(cors.Config{
-		AllowOrigins:     "http://localhost:3000/",
-		AllowMethods:     "GET,POST,PUT,DELETE,OPTIONS",
-		AllowHeaders:     "Origin, Content-Type, Accept, Authorization",
-		AllowCredentials: true,
-		MaxAge:           300,
-	}))
+	// Setup CORS with improved configuration
+	setupCORS(app)
 
 	// Add JSON content type middleware
 	app.Use(middleware.ContentType)
@@ -105,6 +113,15 @@ func initFiber(cfg *config.Config) *fiber.App {
 }
 
 func (s *APIServer) InitHandlers() {
+
+	// Health check endpoint
+	s.app.Get("/health", func(c *fiber.Ctx) error {
+		return c.Status(200).JSON(fiber.Map{
+			"status":  "ok",
+			"version": "1.0",
+		})
+	})
+
 	// Public routes
 	s.app.Get("/images/:directory/:filename", s.static.ServeImage)
 	s.app.Post("/account", s.handlers.Account.CreateAccount)
@@ -114,6 +131,9 @@ func (s *APIServer) InitHandlers() {
 	s.app.Post("/refresh-token", s.handlers.Auth.RefreshToken)
 	s.app.Post("/service/login", s.handlers.Service.LoginService)
 	s.app.Post("/service/signup", s.handlers.Service.SignupToService)
+	s.app.Post("/service/refresh-token", s.handlers.Service.RefreshServiceToken)
+
+
 
 	// Account protected routes group
 	accountGroup := s.app.Group("/account", s.middleware.AccountAuthMiddleware)
@@ -121,19 +141,22 @@ func (s *APIServer) InitHandlers() {
 	accountGroup.Delete("/", s.handlers.Account.DeleteAccount)
 	accountGroup.Get("/", s.handlers.Account.GetAccountDetails)
 
+	// IMPORTANT: Routes that need service auth middleware must come BEFORE routes with account auth middleware
+	// Service user routes (protected by service auth)
+	s.app.Get("/service/user", s.middleware.ServiceAuthMiddleware, s.handlers.Service.GetServiceUserDetails)
+	s.app.Get("/service/user/details", s.middleware.ServiceAuthMiddleware, s.handlers.Service.GetServiceUserDetails)
+	serviceUserGroup := s.app.Group("/service-user", s.middleware.ServiceAuthMiddleware)
+	serviceUserGroup.Delete("/:id/leave", s.handlers.Service.LeaveService)
+	serviceUserGroup.Get("/details", s.handlers.Service.GetServiceUserDetails)
+
 	// Service management routes (protected by account auth)
+	// IMPORTANT: These must come AFTER the service auth routes to prevent path conflicts
 	serviceManageGroup := s.app.Group("/service", s.middleware.AccountAuthMiddleware)
 	serviceManageGroup.Post("/", s.handlers.Service.CreateService)
 	serviceManageGroup.Put("/:id", s.handlers.Service.UpdateService)
 	serviceManageGroup.Get("/list", s.handlers.Service.ListMyServices)
 	serviceManageGroup.Get("/users", s.handlers.Service.ListServiceUsers)
 	serviceManageGroup.Delete("/:id", s.handlers.Service.DeleteService)
-
-	// Service user routes (protected by service auth)
-	serviceUserGroup := s.app.Group("/service-user", s.middleware.ServiceAuthMiddleware)
-	serviceUserGroup.Delete("/:id/leave", s.handlers.Service.LeaveService)
-	serviceUserGroup.Get("/details", s.handlers.Service.GetServiceUserDetails)
-
 }
 
 func (s *APIServer) Run() error {

@@ -1,6 +1,7 @@
 package models
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -44,8 +45,24 @@ func (b *baseClaims) GetAudience() (jwt.ClaimStrings, error) {
 }
 
 func (b *baseClaims) Valid() error {
+	// Check if token is expired
 	if b.ExpiresAt > 0 && time.Unix(b.ExpiresAt, 0).Before(time.Now()) {
 		return jwt.ErrTokenExpired
 	}
+
+	// Check if token has a valid issued time
+	if b.IssuedAt > 0 {
+		// Token cannot be used before it's issued
+		if time.Unix(b.IssuedAt, 0).After(time.Now()) {
+			return fmt.Errorf("token used before issued time")
+		}
+
+		// Token should not be from too far in the past (prevents replay attacks)
+		// 30 days is a reasonable maximum token age
+		if time.Since(time.Unix(b.IssuedAt, 0)) > 30*24*time.Hour {
+			return fmt.Errorf("token is too old")
+		}
+	}
+
 	return nil
 }
